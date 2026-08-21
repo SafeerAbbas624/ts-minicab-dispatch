@@ -37,6 +37,14 @@ class ApiClient {
   Future<Response<dynamic>> get(String path, {Map<String, dynamic>? query}) =>
       _run(() => _dio.get(path, queryParameters: query));
 
+  Future<Response<List<int>>> getBytes(String path, {Map<String, dynamic>? query}) => _run(
+        () => _dio.get<List<int>>(
+          path,
+          queryParameters: query,
+          options: Options(responseType: ResponseType.bytes),
+        ),
+      );
+
   Future<Response<dynamic>> post(String path, {dynamic data}) =>
       _run(() => _dio.post(path, data: data));
 
@@ -56,7 +64,7 @@ class ApiClient {
         ),
       );
 
-  Future<Response<dynamic>> _run(Future<Response<dynamic>> Function() call) async {
+  Future<Response<T>> _run<T>(Future<Response<T>> Function() call) async {
     try {
       return await call();
     } on DioException catch (e) {

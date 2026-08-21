@@ -1,0 +1,204 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/models/admin_driver_detail.dart';
+import '../../../core/network/api_exception.dart';
+import '../../auth/application/auth_controller.dart';
+import '../application/admin_providers.dart';
+import '../data/admin_repository.dart';
+
+class DriverDetailScreen extends ConsumerStatefulWidget {
+  const DriverDetailScreen({super.key, required this.driverId});
+
+  final String driverId;
+
+  @override
+  ConsumerState<DriverDetailScreen> createState() => _DriverDetailScreenState();
+}
+
+class _DriverDetailScreenState extends ConsumerState<DriverDetailScreen> {
+  final _noteController = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  void _refresh() {
+    ref.invalidate(adminDriverDetailProvider(widget.driverId));
+    ref.invalidate(adminDriversProvider);
+  }
+
+  Future<void> _runAction(Future<void> Function() action, {String? successMessage}) async {
+    setState(() => _isSubmitting = true);
+    try {
+      await action();
+      _refresh();
+      if (mounted && successMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMessage)));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete this driver?'),
+        content: const Text('This permanently removes the driver account. This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final repo = ref.read(adminRepositoryProvider);
+    await _runAction(() => repo.deleteDriver(widget.driverId));
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _addNote() async {
+    final text = _noteController.text.trim();
+    if (text.isEmpty) return;
+    final repo = ref.read(adminRepositoryProvider);
+    await _runAction(() => repo.addDriverNote(widget.driverId, text));
+    _noteController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final detailAsync = ref.watch(adminDriverDetailProvider(widget.driverId));
+    final isSuperAdmin = ref.watch(authControllerProvider).role?.isSuperAdmin ?? false;
+    final repo = ref.read(adminRepositoryProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Driver')),
+      body: detailAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text(error.toString())),
+        data: (detail) {
+          final driver = detail.driver;
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(driver.fullName, style: Theme.of(context).textTheme.titleLarge),
+              Text(driver.email),
+              Text(driver.phoneNumber),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  FilledButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => _runAction(
+                              () => repo.approveDriver(widget.driverId),
+                              successMessage: 'Driver approved',
+                            ),
+                    child: const Text('Approve'),
+                  ),
+                  OutlinedButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => _runAction(
+                              () => repo.rejectDriver(widget.driverId),
+                              successMessage: 'Driver rejected',
+                            ),
+                    child: const Text('Reject'),
+                  ),
+                  OutlinedButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => _runAction(
+                              () => repo.suspendDriver(widget.driverId),
+                              successMessage: 'Driver suspended',
+                            ),
+                    child: const Text('Suspend'),
+                  ),
+                  if (isSuperAdmin)
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                      onPressed: _isSubmitting ? null : _confirmDelete,
+                      child: const Text('Delete'),
+                    ),
+                ],
+              ),
+              const Divider(height: 32),
+              Text('Documents', style: Theme.of(context).textTheme.titleMedium),
+              if (detail.documents.isEmpty) const Text('No documents uploaded'),
+              ...detail.documents.map(
+                (doc) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(doc.type),
+                  trailing: Text(doc.status),
+                ),
+              ),
+              const Divider(height: 32),
+              Text('Bank Details', style: Theme.of(context).textTheme.titleMedium),
+              _BankDetailsView(bankDetails: detail.bankDetails),
+              const Divider(height: 32),
+              Text('Notes', style: Theme.of(context).textTheme.titleMedium),
+              ...detail.notes.map(
+                (note) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(note.text),
+                  subtitle: Text(note.authorName ?? ''),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _noteController,
+                      decoration: const InputDecoration(hintText: 'Add a note'),
+                    ),
+                  ),
+                  IconButton(icon: const Icon(Icons.send), onPressed: _addNote),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BankDetailsView extends StatelessWidget {
+  const _BankDetailsView({required this.bankDetails});
+
+  final BankDetails bankDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!bankDetails.hasAny) {
+      return const Text('No bank details on file');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Account holder: ${bankDetails.accountHolderName ?? '—'}'),
+        Text('Sort code: ${bankDetails.sortCode ?? '—'}'),
+        Text('Account number: ${bankDetails.accountNumber ?? '—'}'),
+      ],
+    );
+  }
+}
