@@ -1,6 +1,9 @@
 # Claude Code session state (local to this machine, not project source)
 .claude/
 
+# Local-only secrets — never commit credentials
+/secrets/
+
 # Miscellaneous
 *.class
 *.log
