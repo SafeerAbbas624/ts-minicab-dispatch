@@ -1,26 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../auth/application/auth_controller.dart';
+import 'earnings_screen.dart';
+import 'job_history_screen.dart';
+import 'jobs_tab_screen.dart';
+import 'driver_settings_screen.dart';
 
-/// Placeholder driver home — replaced by the full job list / history /
-/// earnings / settings shell.
-class DriverShell extends ConsumerWidget {
+class DriverShell extends StatefulWidget {
   const DriverShell({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  State<DriverShell> createState() => _DriverShellState();
+}
+
+class _DriverShellState extends State<DriverShell> {
+  int _index = 0;
+
+  static const _titles = ['Jobs', 'History', 'Earnings', 'Settings'];
+  static const _tabs = [
+    JobsTabScreen(),
+    JobHistoryScreen(),
+    EarningsScreen(),
+    DriverSettingsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Driver'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authControllerProvider.notifier).logout(),
-          ),
+      appBar: AppBar(title: Text(_titles[_index])),
+      body: IndexedStack(index: _index, children: _tabs),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.work_outline), label: 'Jobs'),
+          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
+          NavigationDestination(icon: Icon(Icons.payments_outlined), label: 'Earnings'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
         ],
       ),
-      body: const Center(child: Text('Driver panel — jobs list coming next')),
     );
   }
 }
