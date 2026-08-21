@@ -6,14 +6,12 @@ import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/otp_screen.dart';
-import '../../features/auth/presentation/pending_approval_screen.dart';
 import '../../features/auth/presentation/privacy_policy_screen.dart';
 import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/driver/presentation/driver_shell.dart';
 import '../../features/admin/presentation/admin_shell.dart';
-import '../models/driver.dart';
 
 const _publicPrefixes = [
   '/login',
@@ -32,6 +30,10 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   }
 }
 
+/// Role decides which top-level area a user lands in. Driver *approval*
+/// status is NOT gated here — the backend signals "not approved yet" as a
+/// 403 on job-related endpoints, not a field on the session, so that's
+/// handled inline inside DriverShell instead of blocking routing.
 String? _redirect(Ref ref, GoRouterState state) {
   final auth = ref.read(authControllerProvider);
   final loc = state.matchedLocation;
@@ -49,13 +51,7 @@ String? _redirect(Ref ref, GoRouterState state) {
     return loc.startsWith('/admin') ? null : '/admin';
   }
 
-  // driver family
-  final approved = auth.driverApprovalStatus == DriverApprovalStatus.approved;
-  if (!approved) {
-    return loc == '/driver/pending' ? null : '/driver/pending';
-  }
-  if (loc.startsWith('/driver') && loc != '/driver/pending') return null;
-  return '/driver';
+  return loc.startsWith('/driver') ? null : '/driver';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -84,10 +80,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/privacy-policy',
         builder: (context, state) => const PrivacyPolicyScreen(),
-      ),
-      GoRoute(
-        path: '/driver/pending',
-        builder: (context, state) => const PendingApprovalScreen(),
       ),
       GoRoute(
         path: '/driver',

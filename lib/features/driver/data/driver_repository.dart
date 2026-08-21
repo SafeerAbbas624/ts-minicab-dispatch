@@ -85,9 +85,6 @@ class DriverRepository {
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(Payment.fromJson).toList();
   }
-
-  Future<void> registerPushToken({required String deviceToken, required String platform}) =>
-      _client.post('/push-tokens', data: {'device_token': deviceToken, 'platform': platform});
 }
 
 final driverRepositoryProvider = Provider<DriverRepository>((ref) {

@@ -68,3 +68,15 @@ on every route except signup/login/OTP.
 ## Explicit non-goals
 
 No maps/location SDK, no in-app payments, no direct DB access, no flight tracking, no social login.
+
+## Reconciliation notes (from the backend session, 2026-08-21)
+
+These correct or firm up assumptions made on the Flutter side before the backend confirmed behavior:
+
+- **Base URL is confirmed**: `https://api.tsminicab.com/api` for all documented routes. `/internal/*` routes are backend-to-backend only — never call them from the app.
+- **401 vs 403 are different signals**: 401 = dead/invalid token → force logout back to login (handled globally in the dio interceptor). 403 = valid token, wrong role/status (e.g. driver not yet approved, suspended) → show the message from the response body, do **not** log the user out.
+- **Driver approval is NOT a field on the session or on `GET /drivers/me`** — the backend signals "not approved yet" by returning 403 on job-related endpoints (e.g. `GET /jobs/open`) with a message like "Driver account is not approved". The app treats this as a distinct pending-approval UI state, gated on that 403 rather than on a status field. (This reverses the assumption in the very first milestone report — `GET /drivers/me`'s response shape for a `status` field is still unconfirmed and no longer load-bearing for routing.)
+- **Signup flow confirmed as built**: signup → OTP verify → separate login (verify-otp does not auto-authenticate).
+- **Upload constraints**: PDF/JPEG/PNG/WEBP only, 10MB max, enforced client-side before upload (backend 400s otherwise) — applies to `/drivers/me/documents` and `/admin/payments/:job_id/mark-paid`.
+- **409 on `/jobs/:id/accept` is expected, not an error** — confirmed as built (refresh list, show "already taken").
+- **Push notifications**: Firebase project `ts-mincab` exists; Android/iOS apps and their config files (`google-services.json` / `GoogleService-Info.plist`) still need to be created in the Firebase console and handed over before the native side can be wired up. `POST /push-tokens` is documented only under the driver section, but the spec calls for admin push too (website-job-needs-approval alerts) — flagged as unresolved; the Dart-side service is written role-agnostic to cover both once confirmed.

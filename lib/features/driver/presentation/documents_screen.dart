@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/driver.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/upload_validation.dart';
 import '../application/driver_providers.dart';
 import '../data/driver_repository.dart';
 
@@ -60,15 +61,24 @@ class _DocumentTileState extends ConsumerState<_DocumentTile> {
   Future<void> _pickAndUpload() async {
     final file = await FilePicker.pickFile(
       type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      allowedExtensions: allowedUploadExtensions,
     );
     if (file == null || file.path == null) return;
+
+    final picked = File(file.path!);
+    final validationError = await validateUploadFile(picked);
+    if (validationError != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
+      }
+      return;
+    }
 
     setState(() => _isUploading = true);
     try {
       await ref.read(driverRepositoryProvider).uploadDocument(
             documentType: widget.type,
-            file: File(file.path!),
+            file: picked,
           );
       ref.invalidate(driverDocumentsProvider);
     } on ApiException catch (e) {

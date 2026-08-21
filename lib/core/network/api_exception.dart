@@ -8,6 +8,7 @@ class ApiException implements Exception {
   final dynamic data;
 
   bool get isUnauthorized => statusCode == 401;
+  bool get isForbidden => statusCode == 403;
   bool get isConflict => statusCode == 409;
   bool get isNetworkError => statusCode == null;
 

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/upload_validation.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 
@@ -114,9 +115,19 @@ class _JobPaymentRowState extends ConsumerState<_JobPaymentRow> {
     if (attachSlip) {
       final picked = await FilePicker.pickFile(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        allowedExtensions: allowedUploadExtensions,
       );
-      if (picked?.path != null) slipFile = File(picked!.path!);
+      if (picked?.path != null) {
+        final candidate = File(picked!.path!);
+        final validationError = await validateUploadFile(candidate);
+        if (validationError != null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
+          }
+          return;
+        }
+        slipFile = candidate;
+      }
     }
 
     setState(() => _isSubmitting = true);

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/utils/upload_validation.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/driver_providers.dart';
 import '../data/driver_repository.dart';
@@ -20,8 +21,16 @@ class DriverSettingsScreen extends ConsumerWidget {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
+    final file = File(picked.path);
+    final validationError = await validateUploadFile(file);
+    if (validationError != null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
+      }
+      return;
+    }
     try {
-      await ref.read(driverRepositoryProvider).uploadAvatar(File(picked.path));
+      await ref.read(driverRepositoryProvider).uploadAvatar(file);
       ref.invalidate(driverMeProvider);
     } on ApiException catch (e) {
       if (context.mounted) {
