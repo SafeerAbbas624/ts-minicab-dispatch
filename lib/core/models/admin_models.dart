@@ -1,4 +1,5 @@
-// Decimal fields (Prisma) serialize as JSON strings, not numbers.
+// Decimal fields are plain JSON numbers as of the backend's normalization
+// fix — this also tolerates a numeric string defensively.
 double _parseAmount(dynamic value) {
   if (value == null) return 0;
   if (value is num) return value.toDouble();
@@ -48,13 +49,15 @@ class DriverNote {
 
   /// Confirmed live against the real API: the field is `noteText`
   /// (camelCase, not `note_text`/`text`), `createdAt` is camelCase too, and
-  /// there's no author-name field at all — only an opaque `adminId`.
+  /// the note's author is nested under `admin: {email, role}` (added after a
+  /// backend bug-fix pass — previously there was no author field at all).
   factory DriverNote.fromJson(Map<String, dynamic> json) {
+    final admin = json['admin'] as Map<String, dynamic>?;
     return DriverNote(
       id: json['id'].toString(),
       text: json['noteText'] as String? ?? '',
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
-      authorName: null,
+      authorName: admin?['email'] as String?,
     );
   }
 
@@ -72,13 +75,22 @@ class ActionLogEntry {
     this.actorName,
   });
 
-  /// Confirmed live against the real API: there's no ready-made description
-  /// field. Entries carry `actionType` (e.g. "approve_driver", "cancel_job"),
-  /// `targetType`/`targetId`, an optional `note`, and camelCase `createdAt` —
-  /// the description is built from those, and the acting admin's email/role
-  /// is nested under an `admin` object.
+  /// The backend now resolves `description` (e.g. "demo.admin@... approved
+  /// driver Pending Applicant") and `target_label` server-side — added after
+  /// a bug-fix pass, previously the client had to build a description from
+  /// `actionType`/`note` alone. Kept that as a fallback in case an older
+  /// backend or a future entry type omits `description`.
   factory ActionLogEntry.fromJson(Map<String, dynamic> json) {
     final admin = json['admin'] as Map<String, dynamic>?;
+    final description = json['description'] as String?;
+    if (description != null && description.isNotEmpty) {
+      return ActionLogEntry(
+        id: json['id'].toString(),
+        description: description,
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+        actorName: admin?['email'] as String?,
+      );
+    }
     final actionType = json['actionType'] as String?;
     final note = json['note'] as String?;
     final humanized = actionType == null

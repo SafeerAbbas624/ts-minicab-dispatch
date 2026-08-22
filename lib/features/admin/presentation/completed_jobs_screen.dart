@@ -11,34 +11,30 @@ import '../../../core/utils/upload_validation.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 
-/// A Paid/Unpaid split isn't possible here: GET /admin/jobs returns
-/// identical data for a completed-and-paid job and a completed-and-unpaid
-/// one (confirmed against real seeded demo jobs — no payment field on the
-/// job object at all), and there's no GET /admin/payments endpoint to look
-/// it up separately. So this shows every completed job with a Mark Paid
-/// action on each, rather than tabs that can't actually be populated
-/// correctly. Flagged to the backend session: either the job list needs a
-/// payment-status field, or a GET /admin/payments endpoint needs to exist.
+/// GET /admin/payments?status=unpaid is the dedicated payments-first view —
+/// each row nests the full job and a trimmed driver, so marking a job paid
+/// and invalidating this provider correctly drops it off the list (no more
+/// local-only "just marked paid" tracking needed).
 class CompletedJobsScreen extends ConsumerWidget {
   const CompletedJobsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final jobsAsync = ref.watch(adminJobsProvider('completed'));
+    final paymentsAsync = ref.watch(adminPaymentsProvider('unpaid'));
 
-    return jobsAsync.when(
+    return paymentsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(child: Text(error.toString())),
-      data: (jobs) {
-        if (jobs.isEmpty) {
-          return const Center(child: Text('No completed jobs yet'));
+      data: (payments) {
+        if (payments.isEmpty) {
+          return const Center(child: Text('No unpaid jobs'));
         }
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(adminJobsProvider('completed')),
+          onRefresh: () async => ref.invalidate(adminPaymentsProvider('unpaid')),
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
-            itemCount: jobs.length,
-            itemBuilder: (context, index) => _JobPaymentRow(job: jobs[index]),
+            itemCount: payments.length,
+            itemBuilder: (context, index) => _PaymentRow(payment: payments[index]),
           ),
         );
       },
@@ -46,18 +42,17 @@ class CompletedJobsScreen extends ConsumerWidget {
   }
 }
 
-class _JobPaymentRow extends ConsumerStatefulWidget {
-  const _JobPaymentRow({required this.job});
+class _PaymentRow extends ConsumerStatefulWidget {
+  const _PaymentRow({required this.payment});
 
-  final Job job;
+  final Payment payment;
 
   @override
-  ConsumerState<_JobPaymentRow> createState() => _JobPaymentRowState();
+  ConsumerState<_PaymentRow> createState() => _PaymentRowState();
 }
 
-class _JobPaymentRowState extends ConsumerState<_JobPaymentRow> {
+class _PaymentRowState extends ConsumerState<_PaymentRow> {
   bool _isSubmitting = false;
-  bool _justMarkedPaid = false;
 
   Future<void> _markPaid() async {
     final attachSlip = await showDialog<bool>(
@@ -100,12 +95,11 @@ class _JobPaymentRowState extends ConsumerState<_JobPaymentRow> {
 
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(adminRepositoryProvider).markPaid(widget.job.id, transactionSlip: slipFile);
+      await ref
+          .read(adminRepositoryProvider)
+          .markPaid(widget.payment.jobId, transactionSlip: slipFile);
+      ref.invalidate(adminPaymentsProvider('unpaid'));
       if (mounted) {
-        // The job list has no payment-status field to refresh against (see
-        // class comment), so there's nothing to invalidate that would make
-        // the button disappear on its own — track it locally instead.
-        setState(() => _justMarkedPaid = true);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked paid')));
       }
     } on ApiException catch (e) {
@@ -119,23 +113,27 @@ class _JobPaymentRowState extends ConsumerState<_JobPaymentRow> {
 
   @override
   Widget build(BuildContext context) {
-    final job = widget.job;
+    final payment = widget.payment;
+    final job = payment.job;
+    final driver = payment.driver;
     return Card(
       child: ListTile(
-        title: Text(formatDateTime(job.pickupDatetime)),
-        subtitle: Text('${job.customerName} · ${job.pickupLocation} → ${job.dropoffLocation}'),
+        title: Text(job != null ? formatDateTime(job.pickupDatetime) : 'Job ${payment.jobId}'),
+        subtitle: Text([
+          if (job != null) '${job.customerName} · ${job.pickupLocation} → ${job.dropoffLocation}',
+          if (driver != null) 'Driver: ${driver.fullName}',
+        ].join('\n')),
+        isThreeLine: driver != null,
         trailing: _isSubmitting
             ? const SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : _justMarkedPaid
-                ? const Chip(label: Text('Paid'))
-                : FilledButton(
-                    onPressed: _markPaid,
-                    child: Text('Mark Paid  ${formatCurrency(job.fare)}'),
-                  ),
+            : FilledButton(
+                onPressed: _markPaid,
+                child: Text('Mark Paid  ${formatCurrency(payment.amount)}'),
+              ),
       ),
     );
   }

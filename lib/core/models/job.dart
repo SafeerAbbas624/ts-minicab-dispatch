@@ -1,6 +1,6 @@
-/// Money fields (`fareAmount`, `amount`) come back as JSON strings ("65"),
-/// not numbers — confirmed against the real API. Handles a numeric value too
-/// in case that ever changes.
+/// Money fields (`fareAmount`, `amount`) are plain JSON numbers as of the
+/// backend's Decimal-normalization fix — this also tolerates a numeric
+/// string in case an older backend build is ever hit.
 double _parseAmount(dynamic value) {
   if (value == null) return 0;
   if (value is num) return value.toDouble();
@@ -20,6 +20,7 @@ class Job {
     this.source,
     this.notes,
     this.acceptedByDriverId,
+    this.payment,
   });
 
   /// Field names are camelCase on the wire (`pickupDatetime`, `pickupAddress`,
@@ -28,6 +29,9 @@ class Job {
   /// There's no accepted-driver *name* anywhere in the job payload, only
   /// `currentDriverId` — admin screens that want a name have to resolve it
   /// separately (not wired up; contract has no such lookup documented).
+  /// Admin-facing job responses (list/create/edit/approve/reassign) nest a
+  /// `payment` object (or null) — that's how a paid completed job is told
+  /// apart from an unpaid one, no separate lookup needed.
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
       id: json['id'].toString(),
@@ -42,6 +46,7 @@ class Job {
       source: json['source'] as String?,
       notes: json['notes'] as String?,
       acceptedByDriverId: json['currentDriverId']?.toString(),
+      payment: json['payment'] != null ? Payment.fromJson(json['payment'] as Map<String, dynamic>) : null,
     );
   }
 
@@ -56,6 +61,25 @@ class Job {
   final String? source;
   final String? notes;
   final String? acceptedByDriverId;
+  final Payment? payment;
+}
+
+class PaymentDriverSummary {
+  PaymentDriverSummary({required this.forename, required this.surname, this.licenceNumber});
+
+  factory PaymentDriverSummary.fromJson(Map<String, dynamic> json) {
+    return PaymentDriverSummary(
+      forename: json['forename'] as String? ?? '',
+      surname: json['surname'] as String? ?? '',
+      licenceNumber: json['phvDriverLicenceNumber'] as String?,
+    );
+  }
+
+  final String forename;
+  final String surname;
+  final String? licenceNumber;
+
+  String get fullName => '$forename $surname'.trim();
 }
 
 class Payment {
@@ -67,14 +91,14 @@ class Payment {
     this.paidAt,
     this.transactionSlipPath,
     this.job,
+    this.driver,
   });
 
   /// `GET /payments/mine` doesn't return a flat list — it returns
   /// `{unpaid: [...], paid: [...]}`, already bucketed, with each payment
-  /// carrying a fully embedded `job` object. Confirmed against the real API;
-  /// nothing in the contract doc hinted at this shape. `paidStatus` is the
-  /// real field name (not `status`), and `amount` is a JSON string like
-  /// `fareAmount`.
+  /// carrying a fully embedded `job` object. `paidStatus` is the real field
+  /// name (not `status`). `GET /admin/payments` uses the same Payment shape
+  /// but also nests a trimmed `driver` (forename/surname/licence number).
   factory Payment.fromJson(Map<String, dynamic> json) {
     return Payment(
       id: json['id'].toString(),
@@ -84,6 +108,9 @@ class Payment {
       paidAt: DateTime.tryParse(json['paidAt'] as String? ?? ''),
       transactionSlipPath: json['transactionSlipFilePath'] as String?,
       job: json['job'] != null ? Job.fromJson(json['job'] as Map<String, dynamic>) : null,
+      driver: json['driver'] != null
+          ? PaymentDriverSummary.fromJson(json['driver'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -94,6 +121,7 @@ class Payment {
   final DateTime? paidAt;
   final String? transactionSlipPath;
   final Job? job;
+  final PaymentDriverSummary? driver;
 }
 
 /// `GET /payments/mine` response shape: pre-split into paid/unpaid buckets.

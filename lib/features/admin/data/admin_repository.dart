@@ -106,6 +106,15 @@ class AdminRepository {
     await _client.postMultipart('/admin/payments/$jobId/mark-paid', formData);
   }
 
+  /// Dedicated payments-first view — each row nests the full job and a
+  /// trimmed driver. `status` is 'paid' or 'unpaid'; omit for all.
+  Future<List<Payment>> fetchAdminPayments({String? status}) async {
+    final res =
+        await _client.get('/admin/payments', query: status != null ? {'status': status} : null);
+    final list = (res.data as List).cast<Map<String, dynamic>>();
+    return list.map(Payment.fromJson).toList();
+  }
+
   // Analytics / TfL / action log
 
   Future<AdminAnalytics> fetchAnalytics() async {
