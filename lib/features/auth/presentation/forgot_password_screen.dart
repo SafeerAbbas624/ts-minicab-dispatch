@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../application/auth_controller.dart';
@@ -51,8 +52,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: _sent
-                  ? const Text(
-                      'If an account exists for that email, a password reset link has been sent.',
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'If an account exists for that email, a password reset link has been sent.',
+                        ),
+                        const SizedBox(height: 16),
+                        // No app-link/deep-link scheme is registered yet, so
+                        // the emailed link can't open this app directly —
+                        // this is the only way in until that's set up.
+                        OutlinedButton(
+                          onPressed: () => context.push('/reset-password'),
+                          child: const Text('I have my reset code'),
+                        ),
+                      ],
                     )
                   : Form(
                       key: _formKey,

@@ -57,6 +57,7 @@ class _JobPaymentRow extends ConsumerStatefulWidget {
 
 class _JobPaymentRowState extends ConsumerState<_JobPaymentRow> {
   bool _isSubmitting = false;
+  bool _justMarkedPaid = false;
 
   Future<void> _markPaid() async {
     final attachSlip = await showDialog<bool>(
@@ -101,6 +102,10 @@ class _JobPaymentRowState extends ConsumerState<_JobPaymentRow> {
     try {
       await ref.read(adminRepositoryProvider).markPaid(widget.job.id, transactionSlip: slipFile);
       if (mounted) {
+        // The job list has no payment-status field to refresh against (see
+        // class comment), so there's nothing to invalidate that would make
+        // the button disappear on its own — track it locally instead.
+        setState(() => _justMarkedPaid = true);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked paid')));
       }
     } on ApiException catch (e) {
@@ -125,10 +130,12 @@ class _JobPaymentRowState extends ConsumerState<_JobPaymentRow> {
                 height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : FilledButton(
-                onPressed: _markPaid,
-                child: Text('Mark Paid  ${formatCurrency(job.fare)}'),
-              ),
+            : _justMarkedPaid
+                ? const Chip(label: Text('Paid'))
+                : FilledButton(
+                    onPressed: _markPaid,
+                    child: Text('Mark Paid  ${formatCurrency(job.fare)}'),
+                  ),
       ),
     );
   }
