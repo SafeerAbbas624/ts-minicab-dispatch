@@ -1,29 +1,24 @@
 import 'admin_models.dart';
 import 'driver.dart';
 
+/// Confirmed against the real API: `bank_account_details` is a single
+/// free-text string ("Sort code 12-34-56, Acc 12345678"), not a structured
+/// object with separate account-holder/sort-code/account-number fields as
+/// the contract doc's field list implied.
 class BankDetails {
-  BankDetails({this.accountHolderName, this.sortCode, this.accountNumber});
+  BankDetails({this.raw});
 
-  factory BankDetails.fromJson(Map<String, dynamic>? json) {
-    if (json == null) return BankDetails();
-    return BankDetails(
-      accountHolderName: json['account_holder_name'] as String?,
-      sortCode: json['sort_code'] as String?,
-      accountNumber: json['account_number'] as String?,
-    );
+  factory BankDetails.fromJson(Map<String, dynamic> json) {
+    return BankDetails(raw: json['bank_account_details'] as String?);
   }
 
-  final String? accountHolderName;
-  final String? sortCode;
-  final String? accountNumber;
+  final String? raw;
 
-  bool get hasAny => accountHolderName != null || sortCode != null || accountNumber != null;
+  bool get hasAny => raw != null && raw!.isNotEmpty;
 }
 
 /// The full driver record an admin sees: profile + documents + bank info +
-/// notes. The contract doesn't document GET /admin/drivers/:id's exact shape,
-/// so every nested section is parsed defensively (missing/renamed keys just
-/// come back empty rather than crashing the detail screen).
+/// notes, all flat on the same object (confirmed against the real API).
 class AdminDriverDetail {
   AdminDriverDetail({
     required this.driver,
@@ -39,7 +34,7 @@ class AdminDriverDetail {
       driver: Driver.fromJson(json),
       documents: documentsJson.map(DriverDocument.fromJson).toList(),
       notes: notesJson.map(DriverNote.fromJson).toList(),
-      bankDetails: BankDetails.fromJson(json['bank_details'] as Map<String, dynamic>?),
+      bankDetails: BankDetails.fromJson(json),
     );
   }
 

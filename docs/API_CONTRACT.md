@@ -80,3 +80,29 @@ These correct or firm up assumptions made on the Flutter side before the backend
 - **Upload constraints**: PDF/JPEG/PNG/WEBP only, 10MB max, enforced client-side before upload (backend 400s otherwise) — applies to `/drivers/me/documents` and `/admin/payments/:job_id/mark-paid`.
 - **409 on `/jobs/:id/accept` is expected, not an error** — confirmed as built (refresh list, show "already taken").
 - **Push notifications**: Firebase project `ts-mincab` exists; Android/iOS apps and their config files (`google-services.json` / `GoogleService-Info.plist`) still need to be created in the Firebase console and handed over before the native side can be wired up. `POST /push-tokens` is documented only under the driver section, but the spec calls for admin push too (website-job-needs-approval alerts) — flagged as unresolved; the Dart-side service is written role-agnostic to cover both once confirmed.
+
+## Real response shapes (verified 2026-08-21 by calling the live API directly with curl/PowerShell, demo accounts)
+
+The contract above describes routes; it never specified field names, so the client's first guesses (mostly snake_case, matching the contract's own request-body examples) were wrong for most GET responses, which turned out to be camelCase. This caused a real bug (driver detail 404s — `GET /admin/drivers` items have no `id` field, only `user_id`; the client was requesting `/admin/drivers/null`) and a would-be crash (`GET /payments/mine` returning `{paid: [...], unpaid: [...]}`, not a flat array). Documented here since none of this is guessable from the contract doc alone — needed live testing to find.
+
+**`GET /admin/drivers?status=`** — list items:
+```json
+{"user_id":"...","email":"...","status":"active","role":"demo_driver","forename":"...","surname":"...","approval_status":"approved","vehicles":[...]}
+```
+`status` here is account active/inactive — unrelated to approval. The actual approval state is `approval_status` (`pending`/`approved`/`rejected`/`suspended` — the `?status=` query param filters on this despite the name; passing an account-status value like `active` 500s).
+
+**`GET /admin/drivers/:id`** — same fields as above, plus: `dbs_check_date`, `phv_driver_licence_number`, `phone_number`, `approved_by`, `approved_at`, `bank_account_details` (a single free-text string, e.g. `"Sort code 12-34-56, Acc 12345678"` — not structured fields), `vehicles[]`, `documents[]`, `notes[]` (notes unconfirmed shape — none seeded).
+
+**`GET /drivers/me`** — no `id`/`user_id` field at all. Has `theme_preference` (not `theme`), `has_bank_details` (boolean only, not the actual details), `dbs_check_date`, `phv_driver_licence_number`, `phone_number`, `approval_status`, `vehicles[]`. No `documents`/`notes` embedded (separate calls, matching the contract).
+
+**Documents — inconsistent casing depending on which endpoint returns them** (confirmed, not a guess): embedded in `GET /admin/drivers/:id` → camelCase (`documentType`, `filePath`, `uploadedAt`, `verifiedByAdmin`, `expiryDate`). From `GET /drivers/me/documents` directly → snake_case (`document_type`, `uploaded_at`, `verified_by_admin`, `expiry_date`). Same underlying data, two different serializers. The client's `DriverDocument.fromJson` checks both. Neither shape includes a fetchable URL — `filePath`/`file_path` is a server filesystem path (e.g. `/var/lib/ts-minicab-dispatch/uploads/...`), not something the app can display or download directly. No document-view/download endpoint exists in the contract — flagged as a gap.
+
+**`GET /jobs/open`, `GET /jobs/mine`, `GET /admin/jobs?status=`** — all camelCase: `id`, `source` (e.g. `"admin_manual"` — not documented as a concept anywhere in the original contract; likely how the website-jobs-queue distinguishes itself, replacing the client's original guess of a `pending_approval` status value, though no non-manual sample exists yet to confirm the exact string), `status`, `pickupDatetime`, `pickupAddress`, `dropoffAddress`, `customerName`, `customerContact`, `vehicleClassRequested` (every sample job has one — client now sends this on create, previously omitted it entirely), `fareAmount` (a **string**, e.g. `"65"`, not a number), `notes`, `currentDriverId` (id only, no accepted-driver name anywhere), `createdAt`, `createdBy`.
+
+**`GET /payments/mine`** — NOT a flat list. Shape is `{"unpaid": [...], "paid": [...]}`, each entry: `id`, `jobId`, `driverId`, `amount` (string), `paidStatus` (`"paid"`/`"unpaid"` — not `status`), `paidAt`, `paidByAdminId`, `transactionSlipFilePath`, and a fully embedded `job` object (same shape as above). Genuinely useful — no manual cross-referencing against `/jobs/mine` needed.
+
+**Admin has no equivalent payments endpoint.** `GET /admin/jobs?status=completed` returns identical data for a paid and an unpaid completed job (verified against the two seeded demo jobs — no payment field on the job object at all), and there's no `GET /admin/payments`. **The admin app cannot currently distinguish paid from unpaid completed jobs at all.** The Completed Jobs screen was changed from Paid/Unpaid tabs (which had no way to be populated correctly) to a single list with Mark Paid on every job. This needs either a payment-status field added to the admin job list, or a dedicated admin payments-list endpoint.
+
+**`GET /admin/analytics`** — real fields: `total_jobs`, `completed_jobs`, `open_jobs`, `active_approved_drivers`, `total_revenue_paid`, `total_outstanding_unpaid`. No total-driver count, no week/month breakdowns (the contract doc's implied fields were invented, not real).
+
+**Everything above was tested only via the `demo_admin`/`demo_driver` accounts** — POST endpoints that would mutate their seeded state (`/drivers/me/bank-details`, document upload field name) were deliberately not test-called to avoid corrupting the curated demo data, so those request-body shapes are still inferred (best-guess: matching the GET field names) rather than confirmed.

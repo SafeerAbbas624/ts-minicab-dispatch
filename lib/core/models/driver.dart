@@ -33,16 +33,21 @@ class Driver {
     this.theme,
   });
 
+  /// The user's own `GET /drivers/me` doesn't include an id field at all
+  /// (confirmed against the real API); the admin's `GET /admin/drivers/:id`
+  /// keys it as `user_id`, not `id`. Approval status lives under
+  /// `approval_status` — the plain `status` field is account active/inactive,
+  /// a different concept entirely (also confirmed against the real API).
   factory Driver.fromJson(Map<String, dynamic> json) {
     return Driver(
-      id: json['id'].toString(),
+      id: (json['user_id'] ?? json['id'] ?? '').toString(),
       email: json['email'] as String? ?? '',
       forename: json['forename'] as String? ?? '',
       surname: json['surname'] as String? ?? '',
       phoneNumber: json['phone_number'] as String? ?? '',
-      status: DriverApprovalStatus.fromApi(json['status'] as String?),
+      status: DriverApprovalStatus.fromApi(json['approval_status'] as String?),
       avatarUrl: json['avatar_url'] as String?,
-      theme: json['theme'] as String?,
+      theme: json['theme_preference'] as String?,
     );
   }
 
@@ -62,27 +67,33 @@ class DriverDocument {
   DriverDocument({
     required this.id,
     required this.type,
-    required this.status,
-    this.fileUrl,
+    required this.isVerified,
     this.uploadedAt,
   });
 
+  /// The backend returns this same data with two different casings
+  /// depending on the endpoint: camelCase when embedded in
+  /// `GET /admin/drivers/:id` (`documentType`, `verifiedByAdmin`), snake_case
+  /// from `GET /drivers/me/documents` (`document_type`, `verified_by_admin`)
+  /// — confirmed against the real API, not a guess. Both are checked here so
+  /// this model works from either call site. There's no file URL in either
+  /// shape (only a server filesystem path, `filePath`/`file_path`, not
+  /// publicly fetchable) — flagged as an open gap, not something to paper
+  /// over with a fake URL.
   factory DriverDocument.fromJson(Map<String, dynamic> json) {
     return DriverDocument(
       id: json['id'].toString(),
-      type: json['type'] as String? ?? json['document_type'] as String? ?? 'document',
-      status: json['status'] as String? ?? 'pending',
-      fileUrl: json['file_url'] as String?,
-      uploadedAt:
-          json['uploaded_at'] != null ? DateTime.tryParse(json['uploaded_at'] as String) : null,
+      type: (json['documentType'] ?? json['document_type'] ?? json['type'] ?? 'document')
+          as String,
+      isVerified: (json['verifiedByAdmin'] ?? json['verified_by_admin'] ?? false) as bool,
+      uploadedAt: DateTime.tryParse(
+        (json['uploadedAt'] ?? json['uploaded_at'] ?? '') as String? ?? '',
+      ),
     );
   }
 
   final String id;
   final String type;
-  final String status;
-  final String? fileUrl;
+  final bool isVerified;
   final DateTime? uploadedAt;
-
-  bool get isVerified => status == 'verified';
 }

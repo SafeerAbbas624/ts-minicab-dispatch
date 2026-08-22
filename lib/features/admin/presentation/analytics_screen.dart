@@ -21,20 +21,20 @@ class AnalyticsScreen extends ConsumerWidget {
           data: (analytics) => ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _StatCard(label: 'Total drivers', value: '${analytics.totalDrivers}'),
-              _StatCard(label: 'Active drivers', value: '${analytics.activeDrivers}'),
+              _StatCard(label: 'Total jobs', value: '${analytics.totalJobs}'),
               _StatCard(label: 'Open jobs', value: '${analytics.openJobs}'),
+              _StatCard(label: 'Completed jobs', value: '${analytics.completedJobs}'),
               _StatCard(
-                label: 'Completed jobs this week',
-                value: '${analytics.completedJobsThisWeek}',
+                label: 'Active approved drivers',
+                value: '${analytics.activeApprovedDrivers}',
               ),
               _StatCard(
-                label: 'Revenue this month',
-                value: formatCurrency(analytics.totalRevenueThisMonth),
+                label: 'Revenue paid',
+                value: formatCurrency(analytics.totalRevenuePaid),
               ),
               _StatCard(
-                label: 'Outstanding payments',
-                value: formatCurrency(analytics.outstandingPayments),
+                label: 'Outstanding unpaid',
+                value: formatCurrency(analytics.totalOutstandingUnpaid),
               ),
             ],
           ),

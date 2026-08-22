@@ -9,29 +9,31 @@ import '../data/admin_repository.dart';
 import 'job_edit_screen.dart';
 
 /// Website-sourced jobs waiting on admin review before they go live to
-/// drivers. Assumes the backend uses status "pending_approval" for these —
-/// not enumerated in the contract, flag if it differs.
-const _pendingApprovalStatus = 'pending_approval';
-
+/// drivers. GET /admin/jobs confirmed a `source` field ("admin_manual" for
+/// manually-posted jobs) — filtering on source != "admin_manual" is a
+/// better-evidenced guess than the original assumption of a dedicated
+/// "pending_approval" status value, though the exact non-manual source
+/// string (e.g. "website") is still unconfirmed since no sample job with
+/// that source exists in the seeded demo data.
 class WebsiteJobsQueueScreen extends ConsumerWidget {
   const WebsiteJobsQueueScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final jobsAsync = ref.watch(adminJobsProvider(_pendingApprovalStatus));
+    final jobsAsync = ref.watch(adminJobsProvider(null));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Website Jobs Queue')),
       body: jobsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text(error.toString())),
-        data: (jobs) {
+        data: (allJobs) {
+          final jobs = allJobs.where((j) => j.source != 'admin_manual').toList();
           if (jobs.isEmpty) {
             return const Center(child: Text('No jobs waiting for approval'));
           }
           return RefreshIndicator(
-            onRefresh: () async =>
-                ref.invalidate(adminJobsProvider(_pendingApprovalStatus)),
+            onRefresh: () async => ref.invalidate(adminJobsProvider(null)),
             child: ListView.builder(
               padding: const EdgeInsets.all(12),
               itemCount: jobs.length,
@@ -60,7 +62,7 @@ class _QueueItemState extends ConsumerState<_QueueItem> {
     setState(() => _isSubmitting = true);
     try {
       await ref.read(adminRepositoryProvider).approveJob(widget.job.id);
-      ref.invalidate(adminJobsProvider(_pendingApprovalStatus));
+      ref.invalidate(adminJobsProvider(null));
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -75,7 +77,7 @@ class _QueueItemState extends ConsumerState<_QueueItem> {
       MaterialPageRoute(builder: (_) => JobEditScreen(job: widget.job)),
     );
     if (saved == true) {
-      ref.invalidate(adminJobsProvider(_pendingApprovalStatus));
+      ref.invalidate(adminJobsProvider(null));
     }
   }
 

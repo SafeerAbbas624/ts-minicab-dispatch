@@ -148,7 +148,7 @@ class _DriverDetailScreenState extends ConsumerState<DriverDetailScreen> {
                 (doc) => ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(doc.type),
-                  trailing: Text(doc.status),
+                  trailing: Text(doc.isVerified ? 'Verified' : 'Pending review'),
                 ),
               ),
               const Divider(height: 32),
@@ -192,13 +192,6 @@ class _BankDetailsView extends StatelessWidget {
     if (!bankDetails.hasAny) {
       return const Text('No bank details on file');
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Account holder: ${bankDetails.accountHolderName ?? '—'}'),
-        Text('Sort code: ${bankDetails.sortCode ?? '—'}'),
-        Text('Account number: ${bankDetails.accountNumber ?? '—'}'),
-      ],
-    );
+    return Text(bankDetails.raw!);
   }
 }

@@ -19,12 +19,12 @@ class EarningsScreen extends ConsumerWidget {
       child: paymentsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text(error.toString())),
-        data: (payments) {
+        data: (bucket) {
           final now = DateTime.now();
           final weekStart = now.subtract(Duration(days: now.weekday - 1));
           final monthStart = DateTime(now.year, now.month, 1);
 
-          final paid = payments.where((p) => p.isPaid).toList();
+          final paid = bucket.paid;
           final totalPaid = paid.fold<double>(0, (sum, p) => sum + p.amount);
           final thisWeek = paid
               .where((p) => p.paidAt != null && p.paidAt!.isAfter(weekStart))
@@ -32,10 +32,7 @@ class EarningsScreen extends ConsumerWidget {
           final thisMonth = paid
               .where((p) => p.paidAt != null && p.paidAt!.isAfter(monthStart))
               .fold<double>(0, (sum, p) => sum + p.amount);
-          final outstanding = payments.where((p) => !p.isPaid).fold<double>(
-                0,
-                (sum, p) => sum + p.amount,
-              );
+          final outstanding = bucket.unpaid.fold<double>(0, (sum, p) => sum + p.amount);
 
           return ListView(
             padding: const EdgeInsets.all(16),

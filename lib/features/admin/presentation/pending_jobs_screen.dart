@@ -126,8 +126,11 @@ class _JobRowState extends ConsumerState<_JobRow> {
             Text('${job.pickupLocation} → ${job.dropoffLocation}'),
             Text('${job.customerName} · ${formatCurrency(job.fare)}'),
             Text(
-              job.acceptedByDriverName != null
-                  ? 'Accepted by ${job.acceptedByDriverName}'
+              // No accepted-driver name in the job payload, only an id
+              // (currentDriverId) — the contract has no driver-lookup
+              // endpoint to resolve it to a name, so this shows the id.
+              job.acceptedByDriverId != null
+                  ? 'Accepted by driver ${job.acceptedByDriverId}'
                   : 'Not yet accepted',
               style: Theme.of(context).textTheme.bodySmall,
             ),

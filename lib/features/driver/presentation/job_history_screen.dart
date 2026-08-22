@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/models/job.dart';
 import '../../../core/utils/formatters.dart';
 import '../application/driver_providers.dart';
 import 'widgets/job_card.dart';
@@ -43,76 +44,79 @@ class _HistoryList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final jobsAsync = ref.watch(myJobsProvider);
     final paymentsAsync = ref.watch(myPaymentsProvider);
 
-    if (jobsAsync.isLoading || paymentsAsync.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (jobsAsync.hasError) {
-      return Center(child: Text(jobsAsync.error.toString()));
-    }
-    if (paymentsAsync.hasError) {
-      return Center(child: Text(paymentsAsync.error.toString()));
-    }
+    return paymentsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text(error.toString())),
+      data: (bucket) {
+        // GET /payments/mine already returns paid/unpaid buckets with each
+        // job embedded — no need to cross-reference /jobs/mine separately.
+        final payments = paid ? bucket.paid : bucket.unpaid;
 
-    final jobs = jobsAsync.requireValue.where((j) => j.status == 'completed').toList();
-    final payments = paymentsAsync.requireValue;
-    final paymentByJobId = {for (final p in payments) p.jobId: p};
-
-    final filtered = jobs.where((job) {
-      final payment = paymentByJobId[job.id];
-      final isPaid = payment?.isPaid ?? false;
-      return isPaid == paid;
-    }).toList();
-
-    return RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(myJobsProvider);
-        ref.invalidate(myPaymentsProvider);
-        await Future.wait([
-          ref.read(myJobsProvider.future),
-          ref.read(myPaymentsProvider.future),
-        ]);
-      },
-      child: filtered.isEmpty
-          ? LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: SizedBox(
-                  height: constraints.maxHeight,
-                  child: Center(
-                    child: Text(paid ? 'No paid jobs yet' : 'Nothing outstanding'),
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(myPaymentsProvider);
+            await ref.read(myPaymentsProvider.future);
+          },
+          child: payments.isEmpty
+              ? LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: constraints.maxHeight,
+                      child: Center(
+                        child: Text(paid ? 'No paid jobs yet' : 'Nothing outstanding'),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                final job = filtered[index];
-                final payment = paymentByJobId[job.id];
-                return JobCard(
-                  job: job,
-                  trailing: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(formatCurrency(job.fare)),
-                      if (payment != null)
-                        Text(
-                          payment.isPaid ? 'Paid' : 'Unpaid',
-                          style: TextStyle(
-                            color: payment.isPaid ? Colors.green : Colors.orange,
-                            fontSize: 12,
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: payments.length,
+                  itemBuilder: (context, index) {
+                    final payment = payments[index];
+                    final job = payment.job;
+                    if (job == null) {
+                      return _PaymentOnlyCard(payment: payment);
+                    }
+                    return JobCard(
+                      job: job,
+                      trailing: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(formatCurrency(payment.amount)),
+                          Text(
+                            payment.isPaid ? 'Paid' : 'Unpaid',
+                            style: TextStyle(
+                              color: payment.isPaid ? Colors.green : Colors.orange,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
+    );
+  }
+}
+
+class _PaymentOnlyCard extends StatelessWidget {
+  const _PaymentOnlyCard({required this.payment});
+
+  final Payment payment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        title: Text(formatCurrency(payment.amount)),
+        subtitle: Text(payment.isPaid ? 'Paid' : 'Unpaid'),
+      ),
     );
   }
 }

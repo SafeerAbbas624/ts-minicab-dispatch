@@ -20,7 +20,10 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
   final _fareController = TextEditingController();
   final _notesController = TextEditingController();
   DateTime? _pickupDatetime;
+  String _vehicleClass = _vehicleClasses.first;
   bool _isSaving = false;
+
+  static const _vehicleClasses = ['Saloon', 'Estate', 'MPV', 'Executive'];
 
   @override
   void dispose() {
@@ -67,6 +70,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
             customerName: _customerNameController.text.trim(),
             customerContact: _customerContactController.text.trim(),
             fare: double.parse(_fareController.text.trim()),
+            vehicleClass: _vehicleClass,
             notes: _notesController.text.trim(),
           );
       if (!mounted) return;
@@ -133,6 +137,15 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   validator: (v) =>
                       (v == null || double.tryParse(v) == null) ? 'Enter a number' : null,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: _vehicleClass,
+                  decoration: const InputDecoration(labelText: 'Vehicle class'),
+                  items: _vehicleClasses
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _vehicleClass = v!),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

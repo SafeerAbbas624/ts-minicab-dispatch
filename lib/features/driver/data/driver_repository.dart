@@ -19,7 +19,9 @@ class DriverRepository {
 
   Future<void> updateMe({String? theme, String? avatarUrl, String? password}) async {
     final data = <String, dynamic>{};
-    if (theme != null) data['theme'] = theme;
+    // GET /drivers/me returns this field as theme_preference, not theme —
+    // confirmed against the real API.
+    if (theme != null) data['theme_preference'] = theme;
     if (avatarUrl != null) data['avatar_url'] = avatarUrl;
     if (password != null) data['password'] = password;
     await _client.patch('/drivers/me', data: data);
@@ -32,15 +34,14 @@ class DriverRepository {
     await _client.patchMultipart('/drivers/me', formData);
   }
 
-  Future<void> submitBankDetails({
-    required String accountHolderName,
-    required String sortCode,
-    required String accountNumber,
-  }) async {
+  /// GET /drivers/me returns bank info as a single free-text string
+  /// (`bank_account_details`), not structured fields — confirmed against
+  /// the real API. The POST body's expected shape isn't documented or
+  /// independently confirmed (untested to avoid overwriting the seeded demo
+  /// account's bank details); this assumes symmetry with the GET field name.
+  Future<void> submitBankDetails(String bankAccountDetails) async {
     await _client.post('/drivers/me/bank-details', data: {
-      'account_holder_name': accountHolderName,
-      'sort_code': sortCode,
-      'account_number': accountNumber,
+      'bank_account_details': bankAccountDetails,
     });
   }
 
@@ -80,10 +81,12 @@ class DriverRepository {
     return list.map(Job.fromJson).toList();
   }
 
-  Future<List<Payment>> fetchMyPayments() async {
+  /// GET /payments/mine returns `{unpaid: [...], paid: [...]}`, not a flat
+  /// list — confirmed against the real API (the old flat-list assumption
+  /// would throw a cast exception at runtime).
+  Future<PaymentsBucket> fetchMyPayments() async {
     final res = await _client.get('/payments/mine');
-    final list = (res.data as List).cast<Map<String, dynamic>>();
-    return list.map(Payment.fromJson).toList();
+    return PaymentsBucket.fromJson(res.data as Map<String, dynamic>);
   }
 }
 

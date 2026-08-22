@@ -12,7 +12,7 @@ final myJobsProvider = FutureProvider.autoDispose<List<Job>>((ref) {
   return ref.watch(driverRepositoryProvider).fetchMyJobs();
 });
 
-final myPaymentsProvider = FutureProvider.autoDispose<List<Payment>>((ref) {
+final myPaymentsProvider = FutureProvider.autoDispose<PaymentsBucket>((ref) {
   return ref.watch(driverRepositoryProvider).fetchMyPayments();
 });
 

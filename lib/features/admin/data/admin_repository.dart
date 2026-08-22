@@ -46,6 +46,12 @@ class AdminRepository {
 
   // Jobs
 
+  /// GET responses for jobs use camelCase (pickupDatetime, pickupAddress,
+  /// fareAmount, ...) and every sample job carries a vehicleClassRequested
+  /// value — confirmed against the real API. The POST body's exact expected
+  /// shape isn't independently confirmed, but matching the GET field names
+  /// is the best-evidenced guess (replacing the original snake_case guess,
+  /// which is now known wrong for at least the response side).
   Future<void> createJob({
     required DateTime pickupDatetime,
     required String pickupLocation,
@@ -53,15 +59,17 @@ class AdminRepository {
     required String customerName,
     required String customerContact,
     required double fare,
+    required String vehicleClass,
     String? notes,
   }) {
     return _client.post('/admin/jobs', data: {
-      'pickup_datetime': pickupDatetime.toIso8601String(),
-      'pickup_location': pickupLocation,
-      'dropoff_location': dropoffLocation,
-      'customer_name': customerName,
-      'customer_contact': customerContact,
-      'fare': fare,
+      'pickupDatetime': pickupDatetime.toIso8601String(),
+      'pickupAddress': pickupLocation,
+      'dropoffAddress': dropoffLocation,
+      'customerName': customerName,
+      'customerContact': customerContact,
+      'fareAmount': fare,
+      'vehicleClassRequested': vehicleClass,
       if (notes != null && notes.isNotEmpty) 'notes': notes,
     });
   }

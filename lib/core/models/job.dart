@@ -1,3 +1,12 @@
+/// Money fields (`fareAmount`, `amount`) come back as JSON strings ("65"),
+/// not numbers — confirmed against the real API. Handles a numeric value too
+/// in case that ever changes.
+double _parseAmount(dynamic value) {
+  if (value == null) return 0;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString()) ?? 0;
+}
+
 class Job {
   Job({
     required this.id,
@@ -8,25 +17,31 @@ class Job {
     required this.customerContact,
     required this.fare,
     required this.status,
+    this.source,
     this.notes,
     this.acceptedByDriverId,
-    this.acceptedByDriverName,
   });
 
+  /// Field names are camelCase on the wire (`pickupDatetime`, `pickupAddress`,
+  /// `fareAmount`, `currentDriverId`, ...) — confirmed against the real API,
+  /// not the snake_case originally assumed from the contract doc alone.
+  /// There's no accepted-driver *name* anywhere in the job payload, only
+  /// `currentDriverId` — admin screens that want a name have to resolve it
+  /// separately (not wired up; contract has no such lookup documented).
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
       id: json['id'].toString(),
       pickupDatetime:
-          DateTime.tryParse(json['pickup_datetime'] as String? ?? '') ?? DateTime.now(),
-      pickupLocation: json['pickup_location'] as String? ?? json['pickup'] as String? ?? '',
-      dropoffLocation: json['dropoff_location'] as String? ?? json['dropoff'] as String? ?? '',
-      customerName: json['customer_name'] as String? ?? '',
-      customerContact: json['customer_contact'] as String? ?? '',
-      fare: (json['fare'] as num?)?.toDouble() ?? 0,
+          DateTime.tryParse(json['pickupDatetime'] as String? ?? '') ?? DateTime.now(),
+      pickupLocation: json['pickupAddress'] as String? ?? '',
+      dropoffLocation: json['dropoffAddress'] as String? ?? '',
+      customerName: json['customerName'] as String? ?? '',
+      customerContact: json['customerContact'] as String? ?? '',
+      fare: _parseAmount(json['fareAmount']),
       status: json['status'] as String? ?? 'open',
+      source: json['source'] as String?,
       notes: json['notes'] as String?,
-      acceptedByDriverId: json['accepted_by_driver_id']?.toString(),
-      acceptedByDriverName: json['accepted_by_driver_name'] as String?,
+      acceptedByDriverId: json['currentDriverId']?.toString(),
     );
   }
 
@@ -38,9 +53,9 @@ class Job {
   final String customerContact;
   final double fare;
   final String status;
+  final String? source;
   final String? notes;
   final String? acceptedByDriverId;
-  final String? acceptedByDriverName;
 }
 
 class Payment {
@@ -48,28 +63,51 @@ class Payment {
     required this.id,
     required this.jobId,
     required this.amount,
-    required this.status,
+    required this.isPaid,
     this.paidAt,
-    this.transactionSlipUrl,
+    this.transactionSlipPath,
+    this.job,
   });
 
+  /// `GET /payments/mine` doesn't return a flat list — it returns
+  /// `{unpaid: [...], paid: [...]}`, already bucketed, with each payment
+  /// carrying a fully embedded `job` object. Confirmed against the real API;
+  /// nothing in the contract doc hinted at this shape. `paidStatus` is the
+  /// real field name (not `status`), and `amount` is a JSON string like
+  /// `fareAmount`.
   factory Payment.fromJson(Map<String, dynamic> json) {
     return Payment(
       id: json['id'].toString(),
-      jobId: json['job_id'].toString(),
-      amount: (json['amount'] as num?)?.toDouble() ?? 0,
-      status: json['status'] as String? ?? 'unpaid',
-      paidAt: json['paid_at'] != null ? DateTime.tryParse(json['paid_at'] as String) : null,
-      transactionSlipUrl: json['transaction_slip_url'] as String?,
+      jobId: json['jobId'].toString(),
+      amount: _parseAmount(json['amount']),
+      isPaid: json['paidStatus'] == 'paid',
+      paidAt: DateTime.tryParse(json['paidAt'] as String? ?? ''),
+      transactionSlipPath: json['transactionSlipFilePath'] as String?,
+      job: json['job'] != null ? Job.fromJson(json['job'] as Map<String, dynamic>) : null,
     );
   }
 
   final String id;
   final String jobId;
   final double amount;
-  final String status;
+  final bool isPaid;
   final DateTime? paidAt;
-  final String? transactionSlipUrl;
+  final String? transactionSlipPath;
+  final Job? job;
+}
 
-  bool get isPaid => status == 'paid';
+/// `GET /payments/mine` response shape: pre-split into paid/unpaid buckets.
+class PaymentsBucket {
+  PaymentsBucket({required this.paid, required this.unpaid});
+
+  factory PaymentsBucket.fromJson(Map<String, dynamic> json) {
+    List<Payment> parseList(String key) =>
+        ((json[key] as List?) ?? []).cast<Map<String, dynamic>>().map(Payment.fromJson).toList();
+    return PaymentsBucket(paid: parseList('paid'), unpaid: parseList('unpaid'));
+  }
+
+  final List<Payment> paid;
+  final List<Payment> unpaid;
+
+  List<Payment> get all => [...paid, ...unpaid];
 }

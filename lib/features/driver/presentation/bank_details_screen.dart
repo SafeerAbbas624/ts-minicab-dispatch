@@ -30,11 +30,14 @@ class _BankDetailsScreenState extends ConsumerState<BankDetailsScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
     try {
-      await ref.read(driverRepositoryProvider).submitBankDetails(
-            accountHolderName: _nameController.text.trim(),
-            sortCode: _sortCodeController.text.trim(),
-            accountNumber: _accountNumberController.text.trim(),
-          );
+      // The backend stores this as one free-text string (confirmed from
+      // GET /admin/drivers/:id — e.g. "Sort code 12-34-56, Acc 12345678"),
+      // not structured fields — kept as three inputs here for better UX and
+      // combined into that format on submit.
+      final combined = '${_nameController.text.trim()} — '
+          'Sort code ${_sortCodeController.text.trim()}, '
+          'Acc ${_accountNumberController.text.trim()}';
+      await ref.read(driverRepositoryProvider).submitBankDetails(combined);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Bank details saved')),

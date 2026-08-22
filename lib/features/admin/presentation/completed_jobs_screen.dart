@@ -11,65 +11,34 @@ import '../../../core/utils/upload_validation.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 
-class CompletedJobsScreen extends StatelessWidget {
+/// A Paid/Unpaid split isn't possible here: GET /admin/jobs returns
+/// identical data for a completed-and-paid job and a completed-and-unpaid
+/// one (confirmed against real seeded demo jobs — no payment field on the
+/// job object at all), and there's no GET /admin/payments endpoint to look
+/// it up separately. So this shows every completed job with a Mark Paid
+/// action on each, rather than tabs that can't actually be populated
+/// correctly. Flagged to the backend session: either the job list needs a
+/// payment-status field, or a GET /admin/payments endpoint needs to exist.
+class CompletedJobsScreen extends ConsumerWidget {
   const CompletedJobsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        children: [
-          const Material(
-            child: TabBar(
-              tabs: [
-                Tab(text: 'Unpaid'),
-                Tab(text: 'Paid'),
-              ],
-            ),
-          ),
-          const Expanded(
-            child: TabBarView(
-              children: [
-                _CompletedJobsList(paid: false),
-                _CompletedJobsList(paid: true),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompletedJobsList extends ConsumerWidget {
-  const _CompletedJobsList({required this.paid});
-
-  final bool paid;
-
-  @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // No GET /admin/payments endpoint exists in the contract, so payment
-    // state is assumed to live on the job itself: mark-paid presumably flips
-    // job.status from "completed" to "paid". Flag if that's not how the
-    // backend actually models it.
-    final status = paid ? 'paid' : 'completed';
-    final jobsAsync = ref.watch(adminJobsProvider(status));
+    final jobsAsync = ref.watch(adminJobsProvider('completed'));
 
     return jobsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(child: Text(error.toString())),
       data: (jobs) {
         if (jobs.isEmpty) {
-          return Center(child: Text(paid ? 'No paid jobs yet' : 'Nothing outstanding'));
+          return const Center(child: Text('No completed jobs yet'));
         }
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(adminJobsProvider(status)),
+          onRefresh: () async => ref.invalidate(adminJobsProvider('completed')),
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: jobs.length,
-            itemBuilder: (context, index) =>
-                _JobPaymentRow(job: jobs[index], paid: paid, listStatus: status),
+            itemBuilder: (context, index) => _JobPaymentRow(job: jobs[index]),
           ),
         );
       },
@@ -78,11 +47,9 @@ class _CompletedJobsList extends ConsumerWidget {
 }
 
 class _JobPaymentRow extends ConsumerStatefulWidget {
-  const _JobPaymentRow({required this.job, required this.paid, required this.listStatus});
+  const _JobPaymentRow({required this.job});
 
   final Job job;
-  final bool paid;
-  final String listStatus;
 
   @override
   ConsumerState<_JobPaymentRow> createState() => _JobPaymentRowState();
@@ -133,7 +100,9 @@ class _JobPaymentRowState extends ConsumerState<_JobPaymentRow> {
     setState(() => _isSubmitting = true);
     try {
       await ref.read(adminRepositoryProvider).markPaid(widget.job.id, transactionSlip: slipFile);
-      ref.invalidate(adminJobsProvider(widget.listStatus));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked paid')));
+      }
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -150,18 +119,16 @@ class _JobPaymentRowState extends ConsumerState<_JobPaymentRow> {
       child: ListTile(
         title: Text(formatDateTime(job.pickupDatetime)),
         subtitle: Text('${job.customerName} · ${job.pickupLocation} → ${job.dropoffLocation}'),
-        trailing: widget.paid
-            ? Text(formatCurrency(job.fare))
-            : _isSubmitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : FilledButton(
-                    onPressed: _markPaid,
-                    child: Text('Mark Paid  ${formatCurrency(job.fare)}'),
-                  ),
+        trailing: _isSubmitting
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : FilledButton(
+                onPressed: _markPaid,
+                child: Text('Mark Paid  ${formatCurrency(job.fare)}'),
+              ),
       ),
     );
   }
