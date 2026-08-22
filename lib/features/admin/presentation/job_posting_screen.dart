@@ -105,16 +105,14 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Post a Job')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
@@ -182,8 +180,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
                         )
                       : const Text('Post Job'),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
       ),

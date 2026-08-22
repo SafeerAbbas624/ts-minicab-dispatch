@@ -12,46 +12,42 @@ class AdminSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeControllerProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: RadioGroup<ThemeMode>(
-              groupValue: themeMode,
-              onChanged: (mode) =>
-                  ref.read(themeControllerProvider.notifier).setThemeMode(mode!),
-              child: const Column(
-                children: [
-                  RadioListTile<ThemeMode>(title: Text('System theme'), value: ThemeMode.system),
-                  RadioListTile<ThemeMode>(title: Text('Light'), value: ThemeMode.light),
-                  RadioListTile<ThemeMode>(title: Text('Dark'), value: ThemeMode.dark),
-                ],
-              ),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          child: RadioGroup<ThemeMode>(
+            groupValue: themeMode,
+            onChanged: (mode) => ref.read(themeControllerProvider.notifier).setThemeMode(mode!),
+            child: const Column(
+              children: [
+                RadioListTile<ThemeMode>(title: Text('System theme'), value: ThemeMode.system),
+                RadioListTile<ThemeMode>(title: Text('Light'), value: ThemeMode.light),
+                RadioListTile<ThemeMode>(title: Text('Dark'), value: ThemeMode.dark),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: const Text('Reset Password'),
-              subtitle: const Text('Sends a reset link to your email'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
-              ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text('Reset Password'),
+            subtitle: const Text('Sends a reset link to your email'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
             ),
           ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Log out'),
-              onTap: () => ref.read(authControllerProvider.notifier).logout(),
-            ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Log out'),
+            onTap: () => ref.read(authControllerProvider.notifier).logout(),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

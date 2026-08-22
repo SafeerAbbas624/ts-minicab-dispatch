@@ -31,48 +31,45 @@ class _DriverQueueScreenState extends ConsumerState<DriverQueueScreen> {
   Widget build(BuildContext context) {
     final driversAsync = ref.watch(adminDriversProvider(_status));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Drivers')),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 48,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              children: _statusFilters.map((f) {
-                final (value, label) = f;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ChoiceChip(
-                    label: Text(label),
-                    selected: _status == value,
-                    onSelected: (_) => setState(() => _status = value),
-                  ),
-                );
-              }).toList(),
-            ),
+    return Column(
+      children: [
+        SizedBox(
+          height: 48,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            children: _statusFilters.map((f) {
+              final (value, label) = f;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: ChoiceChip(
+                  label: Text(label),
+                  selected: _status == value,
+                  onSelected: (_) => setState(() => _status = value),
+                ),
+              );
+            }).toList(),
           ),
-          Expanded(
-            child: driversAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(child: Text(error.toString())),
-              data: (drivers) {
-                if (drivers.isEmpty) {
-                  return const Center(child: Text('No drivers in this state'));
-                }
-                return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(adminDriversProvider(_status)),
-                  child: ListView.builder(
-                    itemCount: drivers.length,
-                    itemBuilder: (context, index) => _DriverTile(driver: drivers[index]),
-                  ),
-                );
-              },
-            ),
+        ),
+        Expanded(
+          child: driversAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Center(child: Text(error.toString())),
+            data: (drivers) {
+              if (drivers.isEmpty) {
+                return const Center(child: Text('No drivers in this state'));
+              }
+              return RefreshIndicator(
+                onRefresh: () async => ref.invalidate(adminDriversProvider(_status)),
+                child: ListView.builder(
+                  itemCount: drivers.length,
+                  itemBuilder: (context, index) => _DriverTile(driver: drivers[index]),
+                ),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

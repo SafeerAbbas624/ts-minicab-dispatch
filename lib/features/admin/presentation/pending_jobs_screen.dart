@@ -16,26 +16,23 @@ class PendingJobsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final jobsAsync = ref.watch(adminJobsProvider(null));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Active Jobs')),
-      body: jobsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text(error.toString())),
-        data: (allJobs) {
-          final jobs = allJobs.where((j) => _activeStatuses.contains(j.status)).toList();
-          if (jobs.isEmpty) {
-            return const Center(child: Text('No active jobs'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(adminJobsProvider(null)),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: jobs.length,
-              itemBuilder: (context, index) => _JobRow(job: jobs[index]),
-            ),
-          );
-        },
-      ),
+    return jobsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text(error.toString())),
+      data: (allJobs) {
+        final jobs = allJobs.where((j) => _activeStatuses.contains(j.status)).toList();
+        if (jobs.isEmpty) {
+          return const Center(child: Text('No active jobs'));
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(adminJobsProvider(null)),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: jobs.length,
+            itemBuilder: (context, index) => _JobRow(job: jobs[index]),
+          ),
+        );
+      },
     );
   }
 }

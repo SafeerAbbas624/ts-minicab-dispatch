@@ -21,25 +21,22 @@ class WebsiteJobsQueueScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final jobsAsync = ref.watch(adminJobsProvider('pending_approval'));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Website Jobs Queue')),
-      body: jobsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text(error.toString())),
-        data: (jobs) {
-          if (jobs.isEmpty) {
-            return const Center(child: Text('No jobs waiting for approval'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(adminJobsProvider('pending_approval')),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: jobs.length,
-              itemBuilder: (context, index) => _QueueItem(job: jobs[index]),
-            ),
-          );
-        },
-      ),
+    return jobsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text(error.toString())),
+      data: (jobs) {
+        if (jobs.isEmpty) {
+          return const Center(child: Text('No jobs waiting for approval'));
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(adminJobsProvider('pending_approval')),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: jobs.length,
+            itemBuilder: (context, index) => _QueueItem(job: jobs[index]),
+          ),
+        );
+      },
     );
   }
 }

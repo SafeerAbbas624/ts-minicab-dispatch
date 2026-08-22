@@ -11,33 +11,30 @@ class AnalyticsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final analyticsAsync = ref.watch(adminAnalyticsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Analytics')),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(adminAnalyticsProvider),
-        child: analyticsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Center(child: Text(error.toString())),
-          data: (analytics) => ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _StatCard(label: 'Total jobs', value: '${analytics.totalJobs}'),
-              _StatCard(label: 'Open jobs', value: '${analytics.openJobs}'),
-              _StatCard(label: 'Completed jobs', value: '${analytics.completedJobs}'),
-              _StatCard(
-                label: 'Active approved drivers',
-                value: '${analytics.activeApprovedDrivers}',
-              ),
-              _StatCard(
-                label: 'Revenue paid',
-                value: formatCurrency(analytics.totalRevenuePaid),
-              ),
-              _StatCard(
-                label: 'Outstanding unpaid',
-                value: formatCurrency(analytics.totalOutstandingUnpaid),
-              ),
-            ],
-          ),
+    return RefreshIndicator(
+      onRefresh: () async => ref.invalidate(adminAnalyticsProvider),
+      child: analyticsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text(error.toString())),
+        data: (analytics) => ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _StatCard(label: 'Total jobs', value: '${analytics.totalJobs}'),
+            _StatCard(label: 'Open jobs', value: '${analytics.openJobs}'),
+            _StatCard(label: 'Completed jobs', value: '${analytics.completedJobs}'),
+            _StatCard(
+              label: 'Active approved drivers',
+              value: '${analytics.activeApprovedDrivers}',
+            ),
+            _StatCard(
+              label: 'Revenue paid',
+              value: formatCurrency(analytics.totalRevenuePaid),
+            ),
+            _StatCard(
+              label: 'Outstanding unpaid',
+              value: formatCurrency(analytics.totalOutstandingUnpaid),
+            ),
+          ],
         ),
       ),
     );

@@ -85,25 +85,37 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
     final weekLabel =
         '${_weekStart.year}-${_weekStart.month.toString().padLeft(2, '0')}-${_weekStart.day.toString().padLeft(2, '0')}';
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('TfL Export')),
-      body: Column(
-        children: [
-          ListTile(
-            title: Text('Week starting $weekLabel'),
-            trailing: const Icon(Icons.calendar_today),
-            onTap: _pickWeek,
+    // This screen is a drawer tab inside AdminShell's own Scaffold, not a
+    // pushed route — no nested Scaffold here, so the FAB is positioned by
+    // hand via Stack/Align instead of Scaffold's floatingActionButton slot.
+    return Stack(
+      children: [
+        Column(
+          children: [
+            ListTile(
+              title: Text('Week starting $weekLabel'),
+              trailing: const Icon(Icons.calendar_today),
+              onTap: _pickWeek,
+            ),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton.extended(
+            onPressed: _isExporting ? null : _downloadCsv,
+            icon: _isExporting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download),
+            label: const Text('Download CSV'),
           ),
-          Expanded(child: _buildBody()),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isExporting ? null : _downloadCsv,
-        icon: _isExporting
-            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Icon(Icons.download),
-        label: const Text('Download CSV'),
-      ),
+        ),
+      ],
     );
   }
 
