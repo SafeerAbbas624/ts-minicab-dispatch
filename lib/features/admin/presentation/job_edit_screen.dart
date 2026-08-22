@@ -51,15 +51,15 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
     try {
-      // Matches the camelCase field names GET /admin/jobs actually returns
-      // (confirmed) — the request body's own shape isn't independently
-      // confirmed, but symmetry with the GET response is the best guess.
+      // PATCH /admin/jobs/:id uses the same snake_case body shape as create
+      // (confirmed via the backend's API reference) — different casing than
+      // the camelCase GET response, intentionally.
       await ref.read(adminRepositoryProvider).updateJob(widget.job.id, {
-        'pickupAddress': _pickupLocationController.text.trim(),
-        'dropoffAddress': _dropoffLocationController.text.trim(),
-        'customerName': _customerNameController.text.trim(),
-        'customerContact': _customerContactController.text.trim(),
-        'fareAmount': double.parse(_fareController.text.trim()),
+        'pickup_address': _pickupLocationController.text.trim(),
+        'dropoff_address': _dropoffLocationController.text.trim(),
+        'customer_name': _customerNameController.text.trim(),
+        'customer_contact': _customerContactController.text.trim(),
+        'fare_amount': double.parse(_fareController.text.trim()),
         'notes': _notesController.text.trim(),
       });
       if (!mounted) return;

@@ -46,12 +46,11 @@ class AdminRepository {
 
   // Jobs
 
-  /// GET responses for jobs use camelCase (pickupDatetime, pickupAddress,
-  /// fareAmount, ...) and every sample job carries a vehicleClassRequested
-  /// value — confirmed against the real API. The POST body's exact expected
-  /// shape isn't independently confirmed, but matching the GET field names
-  /// is the best-evidenced guess (replacing the original snake_case guess,
-  /// which is now known wrong for at least the response side).
+  /// Confirmed via the backend's own generated API reference: unlike GET
+  /// responses (camelCase, raw Prisma rows), the create/update request body
+  /// is snake_case — an intentional asymmetry, not a typo. `vehicle_class`
+  /// and `fare` are technically optional per that reference, but the UI
+  /// still requires them since every real job has both.
   Future<void> createJob({
     required DateTime pickupDatetime,
     required String pickupLocation,
@@ -63,13 +62,17 @@ class AdminRepository {
     String? notes,
   }) {
     return _client.post('/admin/jobs', data: {
-      'pickupDatetime': pickupDatetime.toIso8601String(),
-      'pickupAddress': pickupLocation,
-      'dropoffAddress': dropoffLocation,
-      'customerName': customerName,
-      'customerContact': customerContact,
-      'fareAmount': fare,
-      'vehicleClassRequested': vehicleClass,
+      // .toUtc() so this serializes with a Z suffix, matching the backend's
+      // own timestamps (e.g. "2026-08-25T15:00:00.000Z") — date/time pickers
+      // produce local time, which toIso8601String() alone would send without
+      // any timezone marker.
+      'pickup_datetime': pickupDatetime.toUtc().toIso8601String(),
+      'pickup_address': pickupLocation,
+      'dropoff_address': dropoffLocation,
+      'customer_name': customerName,
+      'customer_contact': customerContact,
+      'fare_amount': fare,
+      'vehicle_class_requested': vehicleClass,
       if (notes != null && notes.isNotEmpty) 'notes': notes,
     });
   }
@@ -88,10 +91,10 @@ class AdminRepository {
   Future<void> cancelJob(String jobId, {required String reason}) =>
       _client.post('/admin/jobs/$jobId/cancel', data: {'reason': reason});
 
-  Future<void> reassignJob(String jobId, {String? driverId}) => _client.post(
-        '/admin/jobs/$jobId/reassign',
-        data: driverId != null ? {'driver_id': driverId} : null,
-      );
+  /// Confirmed: takes no body — it just unassigns the current driver
+  /// (accepted → open, clears currentDriverId), it doesn't target a specific
+  /// replacement driver despite the name.
+  Future<void> reassignJob(String jobId) => _client.post('/admin/jobs/$jobId/reassign');
 
   // Payments
 

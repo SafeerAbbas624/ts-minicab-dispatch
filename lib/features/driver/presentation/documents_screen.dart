@@ -10,10 +10,14 @@ import '../../../core/utils/upload_validation.dart';
 import '../application/driver_providers.dart';
 import '../data/driver_repository.dart';
 
+// Confirmed exact DocumentType enum values via the backend's own API
+// reference: phv_licence | insurance | dbs | mot | other. "other" is a
+// catch-all, not a specific requirement, so it's left off this list.
 const _requiredDocumentTypes = [
   ('phv_licence', 'PHV Licence'),
   ('insurance', 'Insurance'),
   ('dbs', 'DBS Check'),
+  ('mot', 'MOT'),
 ];
 
 class DocumentsScreen extends ConsumerWidget {

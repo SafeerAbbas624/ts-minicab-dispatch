@@ -40,7 +40,6 @@ dependencies:
   go_router: ^17.5.0
   firebase_core: ^4.13.0
   firebase_messaging: ^16.5.0
-  image_picker: ^1.2.3
   file_picker: ^12.0.0
   intl: ^0.20.3
   share_plus: ^13.3.0

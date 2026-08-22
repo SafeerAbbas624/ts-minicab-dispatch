@@ -27,28 +27,24 @@ class DriverRepository {
     await _client.patch('/drivers/me', data: data);
   }
 
-  Future<void> uploadAvatar(File file) async {
-    final formData = FormData.fromMap({
-      'avatar': await MultipartFile.fromFile(file.path),
-    });
-    await _client.patchMultipart('/drivers/me', formData);
-  }
-
-  /// GET /drivers/me returns bank info as a single free-text string
-  /// (`bank_account_details`), not structured fields — confirmed against
-  /// the real API. The POST body's expected shape isn't documented or
-  /// independently confirmed (untested to avoid overwriting the seeded demo
-  /// account's bank details); this assumes symmetry with the GET field name.
+  /// Confirmed via the backend's own API reference: bank details are stored
+  /// as one encrypted free-text string under `bank_account_details`, and
+  /// this is the exact request shape — no need to guess.
   Future<void> submitBankDetails(String bankAccountDetails) async {
     await _client.post('/drivers/me/bank-details', data: {
       'bank_account_details': bankAccountDetails,
     });
   }
 
-  Future<void> uploadDocument({required String documentType, required File file}) async {
+  Future<void> uploadDocument({
+    required String documentType,
+    required File file,
+    DateTime? expiryDate,
+  }) async {
     final formData = FormData.fromMap({
       'document_type': documentType,
       'file': await MultipartFile.fromFile(file.path),
+      if (expiryDate != null) 'expiry_date': expiryDate.toUtc().toIso8601String(),
     });
     await _client.postMultipart('/drivers/me/documents', formData);
   }

@@ -5,12 +5,16 @@ import '../../../core/models/admin_models.dart';
 import '../application/admin_providers.dart';
 import 'driver_detail_screen.dart';
 
+// GET /admin/drivers?status= only accepts approval-status values
+// (pending/approved/rejected) per the backend's API reference — there is no
+// "suspended" approval status to filter by. Suspended accounts still show
+// up wherever their approval_status places them; the account-status badge
+// on each row surfaces suspension separately.
 const _statusFilters = [
   (null, 'All'),
   ('pending', 'Pending'),
   ('approved', 'Approved'),
   ('rejected', 'Rejected'),
-  ('suspended', 'Suspended'),
 ];
 
 class DriverQueueScreen extends ConsumerStatefulWidget {
@@ -83,7 +87,16 @@ class _DriverTile extends StatelessWidget {
     return ListTile(
       title: Text(driver.fullName),
       subtitle: Text(driver.email),
-      trailing: _StatusBadge(status: driver.status),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (driver.accountStatus == 'suspended') ...[
+            const _StatusBadge(status: 'suspended'),
+            const SizedBox(width: 4),
+          ],
+          _StatusBadge(status: driver.status),
+        ],
+      ),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => DriverDetailScreen(driverId: driver.id)),
       ),

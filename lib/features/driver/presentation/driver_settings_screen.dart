@@ -1,12 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/theme_controller.dart';
-import '../../../core/utils/upload_validation.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/driver_providers.dart';
 import '../data/driver_repository.dart';
@@ -17,20 +13,36 @@ import 'documents_screen.dart';
 class DriverSettingsScreen extends ConsumerWidget {
   const DriverSettingsScreen({super.key});
 
-  Future<void> _pickAvatar(BuildContext context, WidgetRef ref) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked == null) return;
-    final file = File(picked.path);
-    final validationError = await validateUploadFile(file);
-    if (validationError != null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
-      }
-      return;
-    }
+  /// PATCH /drivers/me only accepts avatar_url as a plain string field —
+  /// confirmed via the backend's own API reference, there is no file-upload
+  /// endpoint for avatars at all. So this sets a URL rather than picking a
+  /// local image file, which is a real capability limit, not a UI choice.
+  Future<void> _setAvatarUrl(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set Avatar URL'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Image URL'),
+          keyboardType: TextInputType.url,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (url == null || url.isEmpty) return;
     try {
-      await ref.read(driverRepositoryProvider).uploadAvatar(file);
+      await ref.read(driverRepositoryProvider).updateMe(avatarUrl: url);
       ref.invalidate(driverMeProvider);
     } on ApiException catch (e) {
       if (context.mounted) {
@@ -104,8 +116,8 @@ class DriverSettingsScreen extends ConsumerWidget {
               title: Text(driver.fullName),
               subtitle: Text(driver.email),
               trailing: TextButton(
-                onPressed: () => _pickAvatar(context, ref),
-                child: const Text('Change photo'),
+                onPressed: () => _setAvatarUrl(context, ref),
+                child: const Text('Set photo URL'),
               ),
             ),
           ),

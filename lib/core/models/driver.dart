@@ -1,8 +1,10 @@
+/// Approval workflow state. Confirmed via the backend's own generated API
+/// reference: only these three values exist — there is no "suspended"
+/// approval status.
 enum DriverApprovalStatus {
   pending,
   approved,
   rejected,
-  suspended,
   unknown;
 
   static DriverApprovalStatus fromApi(String? value) {
@@ -13,10 +15,31 @@ enum DriverApprovalStatus {
         return DriverApprovalStatus.approved;
       case 'rejected':
         return DriverApprovalStatus.rejected;
-      case 'suspended':
-        return DriverApprovalStatus.suspended;
       default:
         return DriverApprovalStatus.unknown;
+    }
+  }
+}
+
+/// Account state — separate concept from approval. Confirmed enum:
+/// active | suspended | deletion_requested. A driver can be
+/// approval_status=approved and status=suspended at the same time.
+enum DriverAccountStatus {
+  active,
+  suspended,
+  deletionRequested,
+  unknown;
+
+  static DriverAccountStatus fromApi(String? value) {
+    switch (value) {
+      case 'active':
+        return DriverAccountStatus.active;
+      case 'suspended':
+        return DriverAccountStatus.suspended;
+      case 'deletion_requested':
+        return DriverAccountStatus.deletionRequested;
+      default:
+        return DriverAccountStatus.unknown;
     }
   }
 }
@@ -28,16 +51,16 @@ class Driver {
     required this.forename,
     required this.surname,
     required this.phoneNumber,
-    required this.status,
+    required this.approvalStatus,
+    required this.accountStatus,
     this.avatarUrl,
     this.theme,
   });
 
-  /// The user's own `GET /drivers/me` doesn't include an id field at all
-  /// (confirmed against the real API); the admin's `GET /admin/drivers/:id`
-  /// keys it as `user_id`, not `id`. Approval status lives under
-  /// `approval_status` — the plain `status` field is account active/inactive,
-  /// a different concept entirely (also confirmed against the real API).
+  /// The user's own `GET /drivers/me` doesn't include an id field at all —
+  /// per the backend's API reference, the driver's id is the JWT's `sub`
+  /// claim instead. The admin's `GET /admin/drivers/:id` keys it as
+  /// `user_id`, not `id`.
   factory Driver.fromJson(Map<String, dynamic> json) {
     return Driver(
       id: (json['user_id'] ?? json['id'] ?? '').toString(),
@@ -45,7 +68,8 @@ class Driver {
       forename: json['forename'] as String? ?? '',
       surname: json['surname'] as String? ?? '',
       phoneNumber: json['phone_number'] as String? ?? '',
-      status: DriverApprovalStatus.fromApi(json['approval_status'] as String?),
+      approvalStatus: DriverApprovalStatus.fromApi(json['approval_status'] as String?),
+      accountStatus: DriverAccountStatus.fromApi(json['status'] as String?),
       avatarUrl: json['avatar_url'] as String?,
       theme: json['theme_preference'] as String?,
     );
@@ -56,7 +80,8 @@ class Driver {
   final String forename;
   final String surname;
   final String phoneNumber;
-  final DriverApprovalStatus status;
+  final DriverApprovalStatus approvalStatus;
+  final DriverAccountStatus accountStatus;
   final String? avatarUrl;
   final String? theme;
 
