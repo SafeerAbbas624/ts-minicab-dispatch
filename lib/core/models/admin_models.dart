@@ -1,3 +1,10 @@
+// Decimal fields (Prisma) serialize as JSON strings, not numbers.
+double _parseAmount(dynamic value) {
+  if (value == null) return 0;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString()) ?? 0;
+}
+
 class AdminDriverSummary {
   AdminDriverSummary({
     required this.id,
@@ -62,18 +69,23 @@ class ActionLogEntry {
     this.actorName,
   });
 
-  /// Confirmed via the backend's API reference: entries nest the acting
-  /// admin's email/role under an `admin` object. The description/timestamp
-  /// field names themselves aren't given an exact sample there, so those
-  /// are still a best-effort guess with fallbacks.
+  /// Confirmed live against the real API: there's no ready-made description
+  /// field. Entries carry `actionType` (e.g. "approve_driver", "cancel_job"),
+  /// `targetType`/`targetId`, an optional `note`, and camelCase `createdAt` —
+  /// the description is built from those, and the acting admin's email/role
+  /// is nested under an `admin` object.
   factory ActionLogEntry.fromJson(Map<String, dynamic> json) {
     final admin = json['admin'] as Map<String, dynamic>?;
+    final actionType = json['actionType'] as String?;
+    final note = json['note'] as String?;
+    final humanized = actionType == null
+        ? 'Unknown action'
+        : actionType.replaceAll('_', ' ').replaceRange(0, 1, actionType[0].toUpperCase());
     return ActionLogEntry(
       id: json['id'].toString(),
-      description:
-          json['description'] as String? ?? json['action'] as String? ?? 'Unknown action',
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
-      actorName: admin?['email'] as String? ?? json['actor_name'] as String?,
+      description: note == null || note.isEmpty ? humanized : '$humanized — $note',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      actorName: admin?['email'] as String?,
     );
   }
 
@@ -102,8 +114,8 @@ class AdminAnalytics {
       completedJobs: (json['completed_jobs'] as num?)?.toInt() ?? 0,
       openJobs: (json['open_jobs'] as num?)?.toInt() ?? 0,
       activeApprovedDrivers: (json['active_approved_drivers'] as num?)?.toInt() ?? 0,
-      totalRevenuePaid: (json['total_revenue_paid'] as num?)?.toDouble() ?? 0,
-      totalOutstandingUnpaid: (json['total_outstanding_unpaid'] as num?)?.toDouble() ?? 0,
+      totalRevenuePaid: _parseAmount(json['total_revenue_paid']),
+      totalOutstandingUnpaid: _parseAmount(json['total_outstanding_unpaid']),
     );
   }
 
