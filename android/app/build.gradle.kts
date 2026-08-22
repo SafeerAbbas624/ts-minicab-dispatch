@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace = "com.tsminicab.dispatch"
-    compileSdk = flutter.compileSdkVersion
+    // flutter.compileSdkVersion (36) is behind what flutter_secure_storage
+    // requires (37) — pinned explicitly per Gradle's own suggested fix.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
