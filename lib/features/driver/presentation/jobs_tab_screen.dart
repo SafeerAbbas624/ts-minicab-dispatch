@@ -17,7 +17,13 @@ class JobsTabScreen extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => _ErrorView(
         message: error.toString(),
-        onRetry: () => ref.invalidate(activeJobProvider),
+        // activeJobProvider derives from myJobsProvider — if that's what
+        // actually failed, invalidating only activeJobProvider re-reads the
+        // same cached failure instead of retrying the real request.
+        onRetry: () {
+          ref.invalidate(myJobsProvider);
+          ref.invalidate(activeJobProvider);
+        },
       ),
       data: (activeJob) {
         if (activeJob != null) {

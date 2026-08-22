@@ -26,6 +26,13 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
     try {
       await ref.read(driverRepositoryProvider).acceptJob(widget.job.id);
       ref.invalidate(openJobsProvider);
+      // activeJobProvider derives from myJobsProvider (ref.watch(myJobsProvider.future))
+      // — invalidating activeJobProvider alone just re-runs it against the same
+      // stale cached myJobsProvider data, so the newly-accepted job never shows
+      // up as the active job until something else happens to invalidate
+      // myJobsProvider too. Confirmed live: accepting a job left the Jobs tab
+      // stuck on the open-jobs list instead of switching to ActiveJobView.
+      ref.invalidate(myJobsProvider);
       ref.invalidate(activeJobProvider);
       if (!mounted) return;
       Navigator.of(context).pop();
