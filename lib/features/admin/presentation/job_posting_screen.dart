@@ -54,6 +54,24 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
     });
   }
 
+  /// This screen is a static drawer tab inside AdminShell's IndexedStack, not
+  /// a pushed route — there's nothing to pop back to. Popping here previously
+  /// bubbled up to go_router's root navigator and popped /admin itself off
+  /// its stack, crashing with "no pages left to show" (a black screen).
+  void _resetForm() {
+    _formKey.currentState!.reset();
+    _pickupLocationController.clear();
+    _dropoffLocationController.clear();
+    _customerNameController.clear();
+    _customerContactController.clear();
+    _fareController.clear();
+    _notesController.clear();
+    setState(() {
+      _pickupDatetime = null;
+      _vehicleClass = _vehicleClasses.first;
+    });
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_pickupDatetime == null) {
@@ -76,7 +94,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Job posted')));
-      Navigator.of(context).pop();
+      _resetForm();
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
