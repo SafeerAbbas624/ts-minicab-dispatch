@@ -46,12 +46,15 @@ class AdminDriverSummary {
 class DriverNote {
   DriverNote({required this.id, required this.text, required this.createdAt, this.authorName});
 
+  /// Confirmed live against the real API: the field is `noteText`
+  /// (camelCase, not `note_text`/`text`), `createdAt` is camelCase too, and
+  /// there's no author-name field at all — only an opaque `adminId`.
   factory DriverNote.fromJson(Map<String, dynamic> json) {
     return DriverNote(
       id: json['id'].toString(),
-      text: json['note_text'] as String? ?? json['text'] as String? ?? '',
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
-      authorName: json['author_name'] as String?,
+      text: json['noteText'] as String? ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      authorName: null,
     );
   }
 
