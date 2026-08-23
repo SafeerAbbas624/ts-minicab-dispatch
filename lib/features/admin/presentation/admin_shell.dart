@@ -2,62 +2,61 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/application/auth_controller.dart';
+import '../application/admin_providers.dart';
 import 'action_log_screen.dart';
-import 'analytics_screen.dart';
-import 'completed_jobs_screen.dart';
-import 'create_admin_screen.dart';
-import 'driver_queue_screen.dart';
-import 'job_posting_screen.dart';
-import 'pending_jobs_screen.dart';
 import 'admin_settings_screen.dart';
+import 'create_admin_screen.dart';
+import 'dashboard_screen.dart';
+import 'drivers_shell_screen.dart';
+import 'jobs_shell_screen.dart';
+import 'payments_shell_screen.dart';
 import 'tfl_export_screen.dart';
-import 'website_jobs_queue_screen.dart';
 
-class AdminShell extends ConsumerStatefulWidget {
+class AdminShell extends ConsumerWidget {
   const AdminShell({super.key});
 
-  @override
-  ConsumerState<AdminShell> createState() => _AdminShellState();
-}
-
-class _AdminShellState extends ConsumerState<AdminShell> {
-  int _index = 0;
-
   static const _titles = [
+    'Dashboard',
+    'Jobs',
     'Drivers',
-    'Post a Job',
-    'Website Jobs',
-    'Active Jobs',
     'Payments',
     'TfL Export',
-    'Analytics',
-    'Action Log',
+    'Action Logs',
     'Settings',
   ];
 
   static const _screens = [
-    DriverQueueScreen(),
-    JobPostingScreen(),
-    WebsiteJobsQueueScreen(),
-    PendingJobsScreen(),
-    CompletedJobsScreen(),
+    DashboardScreen(),
+    JobsShellScreen(),
+    DriversShellScreen(),
+    PaymentsShellScreen(),
     TflExportScreen(),
-    AnalyticsScreen(),
     ActionLogScreen(),
     AdminSettingsScreen(),
   ];
 
-  void _select(int index) {
-    setState(() => _index = index);
-    Navigator.of(context).pop();
-  }
+  static const _icons = [
+    Icons.dashboard_outlined,
+    Icons.work_outline,
+    Icons.people_outline,
+    Icons.payments_outlined,
+    Icons.directions_car_outlined,
+    Icons.receipt_long_outlined,
+    Icons.settings_outlined,
+  ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isSuperAdmin = ref.watch(authControllerProvider).role?.isSuperAdmin ?? false;
+    final index = ref.watch(adminTabIndexProvider);
+
+    void select(int i) {
+      ref.read(adminTabIndexProvider.notifier).state = i;
+      Navigator.of(context).pop();
+    }
 
     return Scaffold(
-      appBar: AppBar(title: Text(_titles[_index])),
+      appBar: AppBar(title: Text(_titles[index])),
       drawer: Drawer(
         child: SafeArea(
           child: ListView(
@@ -75,9 +74,10 @@ class _AdminShellState extends ConsumerState<AdminShell> {
               ),
               for (var i = 0; i < _titles.length; i++)
                 ListTile(
+                  leading: Icon(_icons[i]),
                   title: Text(_titles[i]),
-                  selected: i == _index,
-                  onTap: () => _select(i),
+                  selected: i == index,
+                  onTap: () => select(i),
                 ),
               if (isSuperAdmin)
                 ListTile(
@@ -90,11 +90,20 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                     );
                   },
                 ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.logout),
+                title: const Text('Logout'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  ref.read(authControllerProvider.notifier).logout();
+                },
+              ),
             ],
           ),
         ),
       ),
-      body: IndexedStack(index: _index, children: _screens),
+      body: IndexedStack(index: index, children: _screens),
     );
   }
 }

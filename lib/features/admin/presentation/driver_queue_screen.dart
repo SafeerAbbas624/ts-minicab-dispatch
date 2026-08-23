@@ -10,66 +10,32 @@ import 'driver_detail_screen.dart';
 // "suspended" approval status to filter by. Suspended accounts still show
 // up wherever their approval_status places them; the account-status badge
 // on each row surfaces suspension separately.
-const _statusFilters = [
-  (null, 'All'),
-  ('pending', 'Pending'),
-  ('approved', 'Approved'),
-  ('rejected', 'Rejected'),
-];
+/// One filter's worth of the driver queue — the filter itself now lives in
+/// DriversShellScreen's bottom nav bar, this just renders a single status.
+class DriverQueueScreen extends ConsumerWidget {
+  const DriverQueueScreen({super.key, required this.status});
 
-class DriverQueueScreen extends ConsumerStatefulWidget {
-  const DriverQueueScreen({super.key});
+  final String? status;
 
   @override
-  ConsumerState<DriverQueueScreen> createState() => _DriverQueueScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final driversAsync = ref.watch(adminDriversProvider(status));
 
-class _DriverQueueScreenState extends ConsumerState<DriverQueueScreen> {
-  String? _status = 'pending';
-
-  @override
-  Widget build(BuildContext context) {
-    final driversAsync = ref.watch(adminDriversProvider(_status));
-
-    return Column(
-      children: [
-        SizedBox(
-          height: 48,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            children: _statusFilters.map((f) {
-              final (value, label) = f;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: ChoiceChip(
-                  label: Text(label),
-                  selected: _status == value,
-                  onSelected: (_) => setState(() => _status = value),
-                ),
-              );
-            }).toList(),
+    return driversAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text(error.toString())),
+      data: (drivers) {
+        if (drivers.isEmpty) {
+          return const Center(child: Text('No drivers in this state'));
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(adminDriversProvider(status)),
+          child: ListView.builder(
+            itemCount: drivers.length,
+            itemBuilder: (context, index) => _DriverTile(driver: drivers[index]),
           ),
-        ),
-        Expanded(
-          child: driversAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(child: Text(error.toString())),
-            data: (drivers) {
-              if (drivers.isEmpty) {
-                return const Center(child: Text('No drivers in this state'));
-              }
-              return RefreshIndicator(
-                onRefresh: () async => ref.invalidate(adminDriversProvider(_status)),
-                child: ListView.builder(
-                  itemCount: drivers.length,
-                  itemBuilder: (context, index) => _DriverTile(driver: drivers[index]),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
