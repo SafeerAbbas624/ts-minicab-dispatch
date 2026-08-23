@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/user_role.dart';
 import '../../../core/providers/core_providers.dart';
+import '../../../core/push/push_notification_service.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../data/auth_repository.dart';
 
@@ -41,12 +43,22 @@ class AuthController extends StateNotifier<AuthState> {
       return;
     }
     state = AuthState(status: AuthStatus.authenticated, role: UserRole.fromApi(roleStr));
+    _registerPushToken();
   }
 
   Future<void> login({required String email, required String password}) async {
     final result = await _repository.login(email: email, password: password);
     await _secureStorage.saveSession(token: result.token, role: result.role);
     state = AuthState(status: AuthStatus.authenticated, role: UserRole.fromApi(result.role));
+    _registerPushToken();
+  }
+
+  /// Fire-and-forget: a denied notification permission or a flaky FCM token
+  /// fetch shouldn't ever block login/session-restore.
+  void _registerPushToken() {
+    _ref.read(pushNotificationServiceProvider).initialize().catchError((Object e) {
+      debugPrint('Push notification registration failed: $e');
+    });
   }
 
   Future<void> signup({
