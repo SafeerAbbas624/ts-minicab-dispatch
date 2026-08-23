@@ -56,8 +56,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('TS Minicab', style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 8),
+                    Center(
+                      child: Image.asset(
+                        'assets/branding/logo.png',
+                        height: 96,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Text('Sign in to continue', style: Theme.of(context).textTheme.bodyMedium),
                     const SizedBox(height: 32),
                     TextFormField(

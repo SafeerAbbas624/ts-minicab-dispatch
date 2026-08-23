@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/branding/logo.png" alt="TS Minicab logo" width="320">
+</p>
+
 # TS Minicab — Dispatch App
 
 A single Flutter codebase for TS Minicab's driver and admin dispatch system — one app, one App Store listing, one Play Store listing. Which panel a user sees is decided entirely by the `role` the backend returns at login: admin-family roles (`admin`, `super_admin`, `demo_admin`) land in the **Admin panel**; driver-family roles (`driver`, `demo_driver`) land in the **Driver panel**.

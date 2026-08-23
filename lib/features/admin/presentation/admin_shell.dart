@@ -63,12 +63,24 @@ class AdminShell extends ConsumerWidget {
             padding: EdgeInsets.zero,
             children: [
               const DrawerHeader(
-                decoration: BoxDecoration(color: Color(0xFF0B5FFF)),
+                decoration: BoxDecoration(color: Colors.white),
                 child: Align(
                   alignment: Alignment.bottomLeft,
-                  child: Text(
-                    'TS Minicab Admin',
-                    style: TextStyle(color: Colors.white, fontSize: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Image(
+                        image: AssetImage('assets/branding/logo.png'),
+                        height: 56,
+                        fit: BoxFit.contain,
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Admin panel',
+                        style: TextStyle(color: Color(0xFF0B5FFF), fontSize: 14),
+                      ),
+                    ],
                   ),
                 ),
               ),
