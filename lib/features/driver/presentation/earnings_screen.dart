@@ -10,11 +10,13 @@ class EarningsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final paymentsAsync = ref.watch(myPaymentsProvider);
+    final jobsAsync = ref.watch(myJobsProvider);
 
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(myPaymentsProvider);
-        await ref.read(myPaymentsProvider.future);
+        ref.invalidate(myJobsProvider);
+        await Future.wait([ref.read(myPaymentsProvider.future), ref.read(myJobsProvider.future)]);
       },
       child: paymentsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -32,7 +34,18 @@ class EarningsScreen extends ConsumerWidget {
           final thisMonth = paid
               .where((p) => p.paidAt != null && p.paidAt!.isAfter(monthStart))
               .fold<double>(0, (sum, p) => sum + p.amount);
-          final outstanding = bucket.unpaid.fold<double>(0, (sum, p) => sum + p.amount);
+          // bucket.unpaid is structurally always empty, and /jobs/mine's own
+          // nested `payment` isn't reliable for jobs that ARE paid (see
+          // job_history_screen for both) — derive outstanding as completed
+          // jobs whose id isn't in bucket.paid, same cross-reference used
+          // there.
+          final paidJobIds = paid.map((p) => p.jobId).toSet();
+          final outstanding = jobsAsync.maybeWhen(
+            data: (jobs) => jobs
+                .where((j) => j.status == 'completed' && !paidJobIds.contains(j.id))
+                .fold<double>(0, (sum, j) => sum + j.fare),
+            orElse: () => 0.0,
+          );
 
           return ListView(
             padding: const EdgeInsets.all(16),

@@ -11,9 +11,15 @@ import '../../../core/utils/upload_validation.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 
-/// One tab of PaymentsShellScreen — GET /admin/payments?status=paid|unpaid,
-/// each row nesting the full job and a trimmed driver. Only the unpaid tab
-/// gets a Mark Paid action; the paid tab is a read-only record.
+/// One tab of PaymentsShellScreen. The paid tab reads GET
+/// /admin/payments?status=paid directly (reliable — a paid Payment row
+/// always exists once something's been marked paid). The unpaid tab can't
+/// use the equivalent status=unpaid call: the backend only ever creates a
+/// Payment row at the moment something is marked paid, never when a job
+/// completes, so that endpoint is structurally always empty regardless of
+/// how many completed jobs are actually awaiting payment. Deriving unpaid
+/// from GET /admin/jobs?status=completed's nested `payment` (null until
+/// marked paid) instead means a job never silently disappears from view.
 class PaymentListScreen extends ConsumerWidget {
   const PaymentListScreen({super.key, required this.status});
 
@@ -21,24 +27,47 @@ class PaymentListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final paymentsAsync = ref.watch(adminPaymentsProvider(status));
+    if (status == 'unpaid') {
+      final jobsAsync = ref.watch(adminJobsProvider('completed'));
+      return jobsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text(error.toString())),
+        data: (jobs) {
+          final unpaid = jobs.where((j) => !(j.payment?.isPaid ?? false)).toList();
+          if (unpaid.isEmpty) {
+            return const Center(child: Text('No unpaid jobs'));
+          }
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(adminJobsProvider('completed')),
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: unpaid.length,
+              itemBuilder: (context, index) {
+                final job = unpaid[index];
+                final payment = job.payment ??
+                    Payment(id: job.id, jobId: job.id, amount: job.fare, isPaid: false, job: job);
+                return _PaymentRow(payment: payment, isUnpaid: true);
+              },
+            ),
+          );
+        },
+      );
+    }
 
+    final paymentsAsync = ref.watch(adminPaymentsProvider('paid'));
     return paymentsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(child: Text(error.toString())),
       data: (payments) {
         if (payments.isEmpty) {
-          return Center(
-            child: Text(status == 'paid' ? 'No paid jobs yet' : 'No unpaid jobs'),
-          );
+          return const Center(child: Text('No paid jobs yet'));
         }
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(adminPaymentsProvider(status)),
+          onRefresh: () async => ref.invalidate(adminPaymentsProvider('paid')),
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: payments.length,
-            itemBuilder: (context, index) =>
-                _PaymentRow(payment: payments[index], isUnpaid: status == 'unpaid'),
+            itemBuilder: (context, index) => _PaymentRow(payment: payments[index], isUnpaid: false),
           ),
         );
       },
