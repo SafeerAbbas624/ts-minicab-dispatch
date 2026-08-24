@@ -10,14 +10,17 @@ import '../../../core/utils/upload_validation.dart';
 import '../application/driver_providers.dart';
 import '../data/driver_repository.dart';
 
-// Confirmed exact DocumentType enum values via the backend's own API
-// reference: phv_licence | insurance | dbs | mot | other. "other" is a
-// catch-all, not a specific requirement, so it's left off this list.
+// "other" is a catch-all, not a specific requirement, so it's left off this
+// upload checklist (the full enum lives in core/constants/document_types.dart).
 const _requiredDocumentTypes = [
   ('phv_licence', 'PHV Licence'),
   ('insurance', 'Insurance'),
   ('dbs', 'DBS Check'),
   ('mot', 'MOT'),
+  ('driving_licence', 'Driver Licence'),
+  ('vehicle_photo', 'Car Picture'),
+  ('driver_photo', 'Driver Picture'),
+  ('tfl_pco_badge', 'TfL PCO Badge'),
 ];
 
 class DocumentsScreen extends ConsumerWidget {
@@ -98,20 +101,34 @@ class _DocumentTileState extends ConsumerState<_DocumentTile> {
   Widget build(BuildContext context) {
     final document = widget.document;
     final isVerified = document?.isVerified ?? false;
+    final isRejected = document?.reviewStatus == 'rejected';
+
+    String subtitle;
+    if (document == null) {
+      subtitle = 'Not uploaded';
+    } else if (isRejected) {
+      subtitle = document.rejectionReason == null || document.rejectionReason!.isEmpty
+          ? 'Rejected — please re-upload'
+          : 'Rejected: ${document.rejectionReason}';
+    } else if (isVerified) {
+      subtitle = 'Verified';
+    } else {
+      subtitle = 'Pending review';
+    }
 
     return Card(
       child: ListTile(
         title: Text(widget.label),
-        subtitle: Text(
-          document == null ? 'Not uploaded' : (isVerified ? 'Verified' : 'Pending review'),
-        ),
+        subtitle: Text(subtitle),
         leading: Icon(
           document == null
               ? Icons.upload_file
-              : (isVerified ? Icons.check_circle : Icons.hourglass_top),
+              : (isRejected
+                  ? Icons.cancel
+                  : (isVerified ? Icons.check_circle : Icons.hourglass_top)),
           color: document == null
               ? null
-              : (isVerified ? Colors.green : Colors.orange),
+              : (isRejected ? Colors.red : (isVerified ? Colors.green : Colors.orange)),
         ),
         trailing: _isUploading
             ? const SizedBox(

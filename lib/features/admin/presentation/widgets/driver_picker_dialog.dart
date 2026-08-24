@@ -4,27 +4,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/admin_models.dart';
 import '../../application/admin_providers.dart';
 
-/// Search-and-pick dialog for reassigning a job. Returns the selected
-/// driver, or `null` if the admin dismissed without picking one — a
-/// "Reopen to general pool" option is always pinned at the top and returns
-/// `AdminDriverSummary` as null too, distinguished by [reopenToPool] having
-/// been called instead. Only searches by name/email — the admin driver list
-/// endpoint doesn't return a phone number to search by (see
-/// docs/BACKEND_REQUESTS.md).
+/// Search-and-pick dialog for assigning a job to a specific driver. Returns
+/// the selected driver, or `null` if the admin dismissed without picking
+/// one. When [onReopenToPool] is given, a "Reopen to general pool" option is
+/// pinned at the top too — for a job that already has a driver, this is an
+/// alternative to picking a specific one (distinguished by [onReopenToPool]
+/// having been called instead of the dialog returning a driver); omit it for
+/// an open job, where there's no current driver to unassign. Only searches
+/// by name/email — the admin driver list endpoint doesn't return a phone
+/// number to search by (see docs/BACKEND_REQUESTS.md).
 Future<AdminDriverSummary?> showDriverPickerDialog(
   BuildContext context, {
-  required VoidCallback onReopenToPool,
+  VoidCallback? onReopenToPool,
+  String title = 'Assign driver',
 }) {
   return showDialog<AdminDriverSummary>(
     context: context,
-    builder: (context) => _DriverPickerDialog(onReopenToPool: onReopenToPool),
+    builder: (context) => _DriverPickerDialog(onReopenToPool: onReopenToPool, title: title),
   );
 }
 
 class _DriverPickerDialog extends ConsumerStatefulWidget {
-  const _DriverPickerDialog({required this.onReopenToPool});
+  const _DriverPickerDialog({required this.onReopenToPool, required this.title});
 
-  final VoidCallback onReopenToPool;
+  final VoidCallback? onReopenToPool;
+  final String title;
 
   @override
   ConsumerState<_DriverPickerDialog> createState() => _DriverPickerDialogState();
@@ -52,7 +56,7 @@ class _DriverPickerDialogState extends ConsumerState<_DriverPickerDialog> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-              child: Text('Reassign job', style: Theme.of(context).textTheme.titleLarge),
+              child: Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -65,17 +69,19 @@ class _DriverPickerDialogState extends ConsumerState<_DriverPickerDialog> {
                 onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
               ),
             ),
-            const SizedBox(height: 4),
-            ListTile(
-              leading: const Icon(Icons.groups_outlined),
-              title: const Text('Reopen to general pool'),
-              subtitle: const Text('Any approved driver can accept it'),
-              onTap: () {
-                Navigator.of(context).pop();
-                widget.onReopenToPool();
-              },
-            ),
-            const Divider(height: 1),
+            if (widget.onReopenToPool != null) ...[
+              const SizedBox(height: 4),
+              ListTile(
+                leading: const Icon(Icons.groups_outlined),
+                title: const Text('Reopen to general pool'),
+                subtitle: const Text('Any approved driver can accept it'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  widget.onReopenToPool!();
+                },
+              ),
+              const Divider(height: 1),
+            ],
             Flexible(
               child: driversAsync.when(
                 loading: () => const Padding(

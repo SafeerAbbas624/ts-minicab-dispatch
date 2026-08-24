@@ -22,6 +22,7 @@ class Job {
     this.acceptedByDriverId,
     this.payment,
     this.vehicleClass,
+    this.cancellationRequests = const [],
   });
 
   /// Field names are camelCase on the wire (`pickupDatetime`, `pickupAddress`,
@@ -49,6 +50,10 @@ class Job {
       acceptedByDriverId: json['currentDriverId']?.toString(),
       payment: json['payment'] != null ? Payment.fromJson(json['payment'] as Map<String, dynamic>) : null,
       vehicleClass: json['vehicleClassRequested'] as String?,
+      cancellationRequests: ((json['cancellationRequests'] as List?) ?? [])
+          .cast<Map<String, dynamic>>()
+          .map(CancellationRequest.fromJson)
+          .toList(),
     );
   }
 
@@ -65,6 +70,64 @@ class Job {
   final String? vehicleClass;
   final String? acceptedByDriverId;
   final Payment? payment;
+  final List<CancellationRequest> cancellationRequests;
+
+  /// The job's own status stays accepted/arrived throughout a pending
+  /// cancellation review — this is the only signal that one exists.
+  bool get hasPendingCancellation =>
+      cancellationRequests.any((r) => r.status == 'pending');
+}
+
+/// Confirmed live: driver submits a reason via
+/// `POST /jobs/:id/request-cancellation`. If pickup is more than 2 hours
+/// away the release happens immediately and no request row is created; under
+/// 2 hours, this pending record is created instead and an admin has to
+/// review it via `POST /admin/cancellation-requests/:id/approve` or
+/// `/reject`.
+class CancellationRequest {
+  CancellationRequest({
+    required this.id,
+    required this.jobId,
+    required this.driverId,
+    required this.reason,
+    required this.status,
+    this.reviewedBy,
+    this.reviewedAt,
+    this.reviewNote,
+    required this.createdAt,
+    this.job,
+    this.driver,
+  });
+
+  factory CancellationRequest.fromJson(Map<String, dynamic> json) {
+    return CancellationRequest(
+      id: json['id'].toString(),
+      jobId: json['jobId'].toString(),
+      driverId: json['driverId'].toString(),
+      reason: json['reason'] as String? ?? '',
+      status: json['status'] as String? ?? 'pending',
+      reviewedBy: json['reviewedBy']?.toString(),
+      reviewedAt: DateTime.tryParse(json['reviewedAt'] as String? ?? ''),
+      reviewNote: json['reviewNote'] as String?,
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      job: json['job'] != null ? Job.fromJson(json['job'] as Map<String, dynamic>) : null,
+      driver: json['driver'] != null
+          ? PaymentDriverSummary.fromJson(json['driver'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
+  final String id;
+  final String jobId;
+  final String driverId;
+  final String reason;
+  final String status;
+  final String? reviewedBy;
+  final DateTime? reviewedAt;
+  final String? reviewNote;
+  final DateTime createdAt;
+  final Job? job;
+  final PaymentDriverSummary? driver;
 }
 
 class PaymentDriverSummary {

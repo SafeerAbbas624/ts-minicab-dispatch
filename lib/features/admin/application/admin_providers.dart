@@ -25,6 +25,16 @@ final adminPaymentsProvider =
   return ref.watch(adminRepositoryProvider).fetchAdminPayments(status: status);
 });
 
+final adminJobEventsProvider =
+    FutureProvider.autoDispose.family<List<JobEvent>, String>((ref, jobId) {
+  return ref.watch(adminRepositoryProvider).fetchJobEvents(jobId);
+});
+
+final adminCancellationRequestsProvider =
+    FutureProvider.autoDispose<List<CancellationRequest>>((ref) {
+  return ref.watch(adminRepositoryProvider).fetchCancellationRequests();
+});
+
 final adminAnalyticsProvider = FutureProvider.autoDispose<AdminAnalytics>((ref) {
   return ref.watch(adminRepositoryProvider).fetchAnalytics();
 });

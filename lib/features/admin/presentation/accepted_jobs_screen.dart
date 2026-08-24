@@ -112,21 +112,27 @@ class _JobRowState extends ConsumerState<_JobRow> {
   }
 
   Future<void> _reassign() async {
-    // The backend has no way yet to assign a job directly to a chosen
-    // driver (only a driver's own accept call can do that today) — see
-    // docs/BACKEND_REQUESTS.md #4. "Reopen to general pool" already works;
-    // picking a specific driver is honest about not being wired up yet
-    // rather than pretending to do something it can't.
-    final selected = await showDriverPickerDialog(context, onReopenToPool: _reopenToPool);
-    if (selected != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Assigning directly to ${selected.fullName} needs a backend update that '
-            "isn't live yet — use \"Reopen to general pool\" for now.",
-          ),
-        ),
-      );
+    final selected = await showDriverPickerDialog(
+      context,
+      title: 'Reassign job',
+      onReopenToPool: _reopenToPool,
+    );
+    if (selected == null || !mounted) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      await ref.read(adminRepositoryProvider).assignJob(widget.job.id, selected.id);
+      ref.invalidate(adminJobsProvider(null));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Reassigned to ${selected.fullName}')));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -147,6 +153,17 @@ class _JobRowState extends ConsumerState<_JobRow> {
                   Chip(label: Text(job.status), visualDensity: VisualDensity.compact),
                 ],
               ),
+              if (job.hasPendingCancellation)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 4),
+                  child: Chip(
+                    label: const Text('Pending cancellation'),
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                    labelStyle:
+                        TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                  ),
+                ),
               Text('${job.pickupLocation} → ${job.dropoffLocation}'),
               Text('${job.customerName} · ${formatCurrency(job.fare)}'),
               Text(

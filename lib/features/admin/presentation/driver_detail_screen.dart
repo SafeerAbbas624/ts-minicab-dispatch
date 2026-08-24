@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/document_types.dart';
 import '../../../core/models/admin_driver_detail.dart';
+import '../../../core/models/driver.dart';
 import '../../../core/network/api_exception.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
+import 'widgets/document_review_dialog.dart';
 
 class DriverDetailScreen extends ConsumerStatefulWidget {
   const DriverDetailScreen({super.key, required this.driverId});
@@ -145,11 +148,7 @@ class _DriverDetailScreenState extends ConsumerState<DriverDetailScreen> {
               Text('Documents', style: Theme.of(context).textTheme.titleMedium),
               if (detail.documents.isEmpty) const Text('No documents uploaded'),
               ...detail.documents.map(
-                (doc) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(doc.type),
-                  trailing: Text(doc.isVerified ? 'Verified' : 'Pending review'),
-                ),
+                (doc) => _AdminDocumentTile(driverId: widget.driverId, document: doc),
               ),
               const Divider(height: 32),
               Text('Bank Details', style: Theme.of(context).textTheme.titleMedium),
@@ -177,6 +176,36 @@ class _DriverDetailScreenState extends ConsumerState<DriverDetailScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _AdminDocumentTile extends ConsumerWidget {
+  const _AdminDocumentTile({required this.driverId, required this.document});
+
+  final String driverId;
+  final DriverDocument document;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isRejected = document.reviewStatus == 'rejected';
+    final isVerified = document.isVerified;
+    final subtitle = isRejected
+        ? 'Rejected${document.rejectionReason != null && document.rejectionReason!.isNotEmpty ? ': ${document.rejectionReason}' : ''}'
+        : (isVerified ? 'Verified' : 'Pending review');
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(documentTypeLabel(document.type)),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => showDocumentReviewDialog(
+        context,
+        ref,
+        driverId: driverId,
+        document: document,
+        onReviewed: () => ref.invalidate(adminDriverDetailProvider(driverId)),
       ),
     );
   }

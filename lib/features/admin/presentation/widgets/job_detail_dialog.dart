@@ -42,6 +42,18 @@ Future<void> showJobDetailDialog(BuildContext context, Job job) {
                   const SizedBox(height: 8),
                   _DriverInfo(driverId: job.acceptedByDriverId!),
                 ],
+                if (job.hasPendingCancellation) ...[
+                  const Divider(height: 32),
+                  Text('Cancellation request', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  ...job.cancellationRequests
+                      .where((r) => r.status == 'pending')
+                      .map((r) => _Row('Reason', r.reason)),
+                ],
+                const Divider(height: 32),
+                Text('History', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                _JobHistory(jobId: job.id),
                 const SizedBox(height: 16),
                 Align(
                   alignment: Alignment.centerRight,
@@ -81,6 +93,59 @@ class _DriverInfo extends ConsumerWidget {
           _Row('Email', detail.driver.email),
         ],
       ),
+    );
+  }
+}
+
+class _JobHistory extends ConsumerWidget {
+  const _JobHistory({required this.jobId});
+
+  final String jobId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eventsAsync = ref.watch(adminJobEventsProvider(jobId));
+    return eventsAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (error, stack) => Text('Could not load history: $error'),
+      data: (events) {
+        if (events.isEmpty) return const Text('No events yet');
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: events
+              .map((e) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 130,
+                          child: Text(
+                            formatDateTime(e.createdAt),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.outline,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            [
+                              e.eventType.replaceAll('_', ' '),
+                              if (e.actorLabel != null) '— ${e.actorLabel}',
+                              if (e.note != null && e.note!.isNotEmpty) '(${e.note})',
+                            ].join(' '),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ))
+              .toList(),
+        );
+      },
     );
   }
 }

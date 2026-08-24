@@ -96,6 +96,59 @@ class AdminRepository {
   /// replacement driver despite the name.
   Future<void> reassignJob(String jobId) => _client.post('/admin/jobs/$jobId/reassign');
 
+  /// Confirmed live: assigns a specific driver directly, works from both
+  /// 'open' and 'accepted' status (so it doubles as the real "reassign to a
+  /// named driver" action, unlike [reassignJob] above which only releases).
+  Future<void> assignJob(String jobId, String driverId) =>
+      _client.post('/admin/jobs/$jobId/assign', data: {'driver_id': driverId});
+
+  /// GET /admin/jobs/:id/events — confirmed live, chronological event
+  /// history (created/accepted/arrived/completed/cancelled/etc).
+  Future<List<JobEvent>> fetchJobEvents(String jobId) async {
+    final res = await _client.get('/admin/jobs/$jobId/events');
+    final list = (res.data as List).cast<Map<String, dynamic>>();
+    return list.map(JobEvent.fromJson).toList();
+  }
+
+  // Documents
+
+  Future<void> verifyDocument(String driverId, String documentId) =>
+      _client.post('/admin/drivers/$driverId/documents/$documentId/verify');
+
+  Future<void> rejectDocument(String driverId, String documentId, String reason) =>
+      _client.post('/admin/drivers/$driverId/documents/$documentId/reject', data: {'reason': reason});
+
+  Future<List<int>> fetchDocumentFile(String driverId, String documentId) async {
+    final res = await _client.getBytes('/admin/drivers/$driverId/documents/$documentId/file');
+    return res.data ?? [];
+  }
+
+  // Cancellation requests
+
+  /// GET /admin/cancellation-requests — confirmed live. Real endpoints are
+  /// separate /approve and /reject actions, not a unified /review endpoint
+  /// as originally suggested in docs/BACKEND_REQUESTS.md.
+  Future<List<CancellationRequest>> fetchCancellationRequests() async {
+    final res = await _client.get('/admin/cancellation-requests');
+    final list = (res.data as List).cast<Map<String, dynamic>>();
+    return list.map(CancellationRequest.fromJson).toList();
+  }
+
+  /// NOTE: live testing showed `penalize: false` still logs a penalty note
+  /// on the driver's record — same as `penalize: true`. Flagged to the
+  /// backend as a suspected bug; the toggle is wired here regardless so it
+  /// starts working correctly once fixed server-side.
+  Future<void> approveCancellationRequest(String id, {String? reviewNote, required bool penalize}) =>
+      _client.post('/admin/cancellation-requests/$id/approve', data: {
+        if (reviewNote != null && reviewNote.isNotEmpty) 'reviewNote': reviewNote,
+        'penalize': penalize,
+      });
+
+  Future<void> rejectCancellationRequest(String id, {String? note}) =>
+      _client.post('/admin/cancellation-requests/$id/reject', data: {
+        if (note != null && note.isNotEmpty) 'note': note,
+      });
+
   // Payments
 
   Future<void> markPaid(String jobId, {File? transactionSlip}) async {

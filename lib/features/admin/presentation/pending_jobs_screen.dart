@@ -6,6 +6,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/utils/formatters.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
+import 'widgets/driver_picker_dialog.dart';
 import 'widgets/job_detail_dialog.dart';
 
 /// Jobs waiting for a driver to pick them up — status "open" only. Jobs a
@@ -90,6 +91,27 @@ class _JobRowState extends ConsumerState<_JobRow> {
     }
   }
 
+  Future<void> _assign() async {
+    final selected = await showDriverPickerDialog(context, title: 'Assign to driver');
+    if (selected == null || !mounted) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      await ref.read(adminRepositoryProvider).assignJob(widget.job.id, selected.id);
+      ref.invalidate(adminJobsProvider(null));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Assigned to ${selected.fullName}')));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final job = widget.job;
@@ -112,6 +134,11 @@ class _JobRowState extends ConsumerState<_JobRow> {
               const SizedBox(height: 8),
               Row(
                 children: [
+                  TextButton(
+                    onPressed: _isSubmitting ? null : _assign,
+                    child: const Text('Assign to driver'),
+                  ),
+                  const SizedBox(width: 8),
                   TextButton(
                     onPressed: _isSubmitting ? null : _cancel,
                     style:

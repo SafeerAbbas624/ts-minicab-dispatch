@@ -65,8 +65,14 @@ class DriverRepository {
 
   Future<void> acceptJob(String jobId) => _client.post('/jobs/$jobId/accept');
 
-  Future<void> releaseJob(String jobId, {required String reason}) =>
-      _client.post('/jobs/$jobId/release', data: {'reason': reason});
+  /// Confirmed live: the single entry point for a driver cancelling an
+  /// accepted job. The backend itself decides what happens based on time to
+  /// pickup — more than 2 hours out, the job is released immediately (no
+  /// request row created); under 2 hours, a pending [CancellationRequest] is
+  /// created instead and the job stays assigned until an admin approves or
+  /// rejects it via `/admin/cancellation-requests/:id/approve|reject`.
+  Future<void> requestCancellation(String jobId, {required String reason}) =>
+      _client.post('/jobs/$jobId/request-cancellation', data: {'reason': reason});
 
   Future<void> updateJobStatus(String jobId, {required String status}) =>
       _client.post('/jobs/$jobId/status', data: {'status': status});

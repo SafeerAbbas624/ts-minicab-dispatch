@@ -94,6 +94,8 @@ class DriverDocument {
     required this.type,
     required this.isVerified,
     this.uploadedAt,
+    this.reviewStatus,
+    this.rejectionReason,
   });
 
   /// The backend returns this same data with two different casings
@@ -101,10 +103,9 @@ class DriverDocument {
   /// `GET /admin/drivers/:id` (`documentType`, `verifiedByAdmin`), snake_case
   /// from `GET /drivers/me/documents` (`document_type`, `verified_by_admin`)
   /// — confirmed against the real API, not a guess. Both are checked here so
-  /// this model works from either call site. There's no file URL in either
-  /// shape (only a server filesystem path, `filePath`/`file_path`, not
-  /// publicly fetchable) — flagged as an open gap, not something to paper
-  /// over with a fake URL.
+  /// this model works from either call site. `reviewStatus` (pending /
+  /// verified / rejected) and `rejectionReason` were added alongside the new
+  /// admin verify/reject + file-viewing endpoints — confirmed live.
   factory DriverDocument.fromJson(Map<String, dynamic> json) {
     return DriverDocument(
       id: json['id'].toString(),
@@ -114,6 +115,8 @@ class DriverDocument {
       uploadedAt: DateTime.tryParse(
         (json['uploadedAt'] ?? json['uploaded_at'] ?? '') as String? ?? '',
       ),
+      reviewStatus: json['reviewStatus'] as String?,
+      rejectionReason: json['rejectionReason'] as String?,
     );
   }
 
@@ -121,4 +124,6 @@ class DriverDocument {
   final String type;
   final bool isVerified;
   final DateTime? uploadedAt;
+  final String? reviewStatus;
+  final String? rejectionReason;
 }

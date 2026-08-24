@@ -130,6 +130,36 @@ class ActionLogEntry {
   final String? actorName;
 }
 
+/// GET /admin/jobs/:id/events — confirmed live. `actor_label` is already
+/// resolved server-side (driver name, admin email, or "System (website)"),
+/// same pattern as the action log's description — no client-side lookup
+/// needed.
+class JobEvent {
+  JobEvent({
+    required this.id,
+    required this.eventType,
+    required this.createdAt,
+    this.actorLabel,
+    this.note,
+  });
+
+  factory JobEvent.fromJson(Map<String, dynamic> json) {
+    return JobEvent(
+      id: json['id'].toString(),
+      eventType: json['eventType'] as String? ?? 'unknown',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      actorLabel: json['actor_label'] as String?,
+      note: json['note'] as String?,
+    );
+  }
+
+  final String id;
+  final String eventType;
+  final DateTime createdAt;
+  final String? actorLabel;
+  final String? note;
+}
+
 class AdminAnalytics {
   AdminAnalytics({
     required this.totalJobs,
