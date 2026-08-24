@@ -7,6 +7,7 @@ import '../../../core/utils/formatters.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 import 'job_edit_screen.dart';
+import 'widgets/job_detail_dialog.dart';
 
 /// Website-sourced jobs waiting on admin review before they go live to
 /// drivers. Confirmed via the backend's own API reference: JobStatus
@@ -80,26 +81,29 @@ class _QueueItemState extends ConsumerState<_QueueItem> {
   Widget build(BuildContext context) {
     final job = widget.job;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(formatDateTime(job.pickupDatetime)),
-            Text('${job.pickupLocation} → ${job.dropoffLocation}'),
-            Text('${job.customerName} · ${formatCurrency(job.fare)}'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                TextButton(onPressed: _isSubmitting ? null : _edit, child: const Text('Edit')),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _isSubmitting ? null : _approve,
-                  child: const Text('Approve'),
-                ),
-              ],
-            ),
-          ],
+      child: InkWell(
+        onTap: () => showJobDetailDialog(context, job),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(formatDateTime(job.pickupDatetime)),
+              Text('${job.pickupLocation} → ${job.dropoffLocation}'),
+              Text('${job.customerName} · ${formatCurrency(job.fare)}'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  TextButton(onPressed: _isSubmitting ? null : _edit, child: const Text('Edit')),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _isSubmitting ? null : _approve,
+                    child: const Text('Approve'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

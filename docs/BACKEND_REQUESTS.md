@@ -22,11 +22,9 @@ Everything below is needed to finish the feature list requested on this date. Ea
 
 ## 3. New document types
 
-Current `DocumentType` enum: `phv_licence | insurance | dbs | mot | other`. Requested additions: driver's licence, car (vehicle) picture, driver's own photo, and something covering the TfL PCO badge.
+Current `DocumentType` enum: `phv_licence | insurance | dbs | mot | other`. Confirmed: add four upload types — driver's licence, car (vehicle) picture, driver's own photo, and TfL PCO badge (a photo upload, not a text field).
 
-**One thing to confirm before adding these:** is the TfL PCO badge a **document to upload** (a photo of the physical badge) like the others, or a **text field** on the driver's profile (the badge number itself), or both? The request as written ("TFL BADGE DRIVER number PCO") reads like it could be either — worth deciding since a text field is a very different (much smaller) change than a new document type.
-
-**Needed (assuming upload):** add enum values, e.g. `driving_licence`, `vehicle_photo`, `driver_photo`, `tfl_badge` — exact names up to whoever owns the schema, the client just needs to know what they are.
+**Needed:** add enum values — suggested `driving_licence`, `vehicle_photo`, `driver_photo`, `tfl_pco_badge`. Exact names up to whoever owns the schema; the client just needs to know the final strings before wiring the picker to them.
 
 **Client impact:** once the enum values are confirmed, I'll add them to the driver's document-type picker and the admin verification screen from item 2.
 
@@ -36,7 +34,7 @@ Current `DocumentType` enum: `phv_licence | insurance | dbs | mot | other`. Requ
 
 **Needed:** a new endpoint, e.g. `POST /admin/jobs/:id/assign` with `{"driver_id": "..."}` — sets `currentDriverId` and status directly (bypassing the normal self-service accept race), presumably validating the target driver is `approved`/`active`. Whether the existing reassign-to-pool behavior should stay as a separate action or be replaced entirely by "reassign always means pick a specific driver" is a product call — the client can support either.
 
-**Client impact:** the driver-search/picker UI itself needs no backend gap to build (the existing `GET /admin/drivers?status=approved` already returns everything needed for a searchable list) — only the actual "assign to this driver" action needs the new endpoint.
+**Client impact:** built already — the reassign button now opens a searchable driver picker (name/email) with "Reopen to general pool" pinned at the top (fully functional, calls the existing reassign endpoint) and a driver list below. Picking a specific driver currently just tells the admin this needs the endpoint above, rather than silently doing nothing or reopening to pool instead. One thing confirmed while building this: `GET /admin/drivers` doesn't return a phone number at all (checked the live response), so the search can only match name/email right now, not the "number" part of "search button to write name/number to search" — if phone-number search matters, that field needs adding to the list response too.
 
 ## 5. Cancellation-request/approval workflow with a 2-hour cutoff
 
@@ -51,10 +49,7 @@ This is the biggest new piece — a genuinely new workflow, not an extension of 
 - A way to represent "pending cancellation" — either a new `JobStatus` value or a boolean flag alongside the existing status, plus a place to store the driver's reason text and the timestamp.
 - `POST /jobs/:id/request-cancellation` (driver) — body `{"reason": "..."}`. Should 409 if the job isn't `accepted`/`arrived`, and probably only make sense to call when under the 2-hour mark (calling it when there's more than 2 hours left could just be routed straight to the existing immediate-release path instead, client-side or server-side — worth deciding which).
 - `GET /admin/cancellation-requests` (or filter into the existing jobs list) — so admins can see what's pending.
-- `POST /admin/cancellation-requests/:id/approve` — releases the job and applies the penalty.
-- `POST /admin/cancellation-requests/:id/reject` — dismisses the request, job stays assigned, driver sees it's no longer pending.
-
-**Needs a decision, not just an implementation:** what "penalized" actually means. A strike count on the driver record? A note logged automatically (reusing the existing driver-notes mechanism)? Something that affects future job eligibility? The client can display and act on whatever gets decided — it just needs the concept to exist somewhere it can read from.
+- `POST /admin/cancellation-requests/:id/review` — body `{"approved": true|false, "penalize": true|false}`. **Confirmed: this is a manual per-case admin call, not an automated rule.** If the driver's stated reason holds up, the admin approves without penalizing; if not, they penalize. "Penalize" means: reuse the existing driver-notes mechanism (`POST /admin/drivers/:id/notes`) to log a note on the driver's record — no new penalty field/table/strike-count needed. So on approval with `penalize: true`, the backend should write a driver note (something like "Late cancellation approved without penalty-free reason — job <id>, cancelled Xh before pickup") the same way an admin manually adding a note works today. Rejecting a request needs no penalty option — the job just stays assigned, nothing to penalize.
 
 **Client impact:** driver-side, I've already drafted the professional-tone copy for the warning dialog (below) — ready to wire in once the endpoints exist. Admin-side, a pending-cancellations list/inbox with approve/reject actions.
 

@@ -6,6 +6,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/utils/formatters.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
+import 'widgets/driver_picker_dialog.dart';
 import 'widgets/job_detail_dialog.dart';
 
 const _acceptedStatuses = {'accepted', 'arrived'};
@@ -92,7 +93,7 @@ class _JobRowState extends ConsumerState<_JobRow> {
     }
   }
 
-  Future<void> _reassign() async {
+  Future<void> _reopenToPool() async {
     setState(() => _isSubmitting = true);
     try {
       await ref.read(adminRepositoryProvider).reassignJob(widget.job.id);
@@ -107,6 +108,25 @@ class _JobRowState extends ConsumerState<_JobRow> {
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _reassign() async {
+    // The backend has no way yet to assign a job directly to a chosen
+    // driver (only a driver's own accept call can do that today) — see
+    // docs/BACKEND_REQUESTS.md #4. "Reopen to general pool" already works;
+    // picking a specific driver is honest about not being wired up yet
+    // rather than pretending to do something it can't.
+    final selected = await showDriverPickerDialog(context, onReopenToPool: _reopenToPool);
+    if (selected != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Assigning directly to ${selected.fullName} needs a backend update that '
+            "isn't live yet — use \"Reopen to general pool\" for now.",
+          ),
+        ),
+      );
     }
   }
 
@@ -141,7 +161,7 @@ class _JobRowState extends ConsumerState<_JobRow> {
                 children: [
                   TextButton(
                     onPressed: _isSubmitting ? null : _reassign,
-                    child: const Text('Reassign / Reopen'),
+                    child: const Text('Reassign'),
                   ),
                   const SizedBox(width: 8),
                   TextButton(

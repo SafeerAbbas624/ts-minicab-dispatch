@@ -73,15 +73,25 @@ class ActionLogEntry {
     required this.description,
     required this.createdAt,
     this.actorName,
+    this.actionType,
+    this.targetType,
+    this.targetId,
+    this.note,
   });
 
   /// The backend now resolves `description` (e.g. "demo.admin@... approved
   /// driver Pending Applicant") and `target_label` server-side — added after
   /// a bug-fix pass, previously the client had to build a description from
   /// `actionType`/`note` alone. Kept that as a fallback in case an older
-  /// backend or a future entry type omits `description`.
+  /// backend or a future entry type omits `description`. The raw fields are
+  /// kept too (not just folded into the description) so a detail popup can
+  /// show the exact target id and any note verbatim.
   factory ActionLogEntry.fromJson(Map<String, dynamic> json) {
     final admin = json['admin'] as Map<String, dynamic>?;
+    final actionType = json['actionType'] as String?;
+    final targetType = json['targetType'] as String?;
+    final targetId = json['targetId']?.toString();
+    final note = json['note'] as String?;
     final description = json['description'] as String?;
     if (description != null && description.isNotEmpty) {
       return ActionLogEntry(
@@ -89,10 +99,12 @@ class ActionLogEntry {
         description: description,
         createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
         actorName: admin?['email'] as String?,
+        actionType: actionType,
+        targetType: targetType,
+        targetId: targetId,
+        note: note,
       );
     }
-    final actionType = json['actionType'] as String?;
-    final note = json['note'] as String?;
     final humanized = actionType == null
         ? 'Unknown action'
         : actionType.replaceAll('_', ' ').replaceRange(0, 1, actionType[0].toUpperCase());
@@ -101,12 +113,20 @@ class ActionLogEntry {
       description: note == null || note.isEmpty ? humanized : '$humanized — $note',
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
       actorName: admin?['email'] as String?,
+      actionType: actionType,
+      targetType: targetType,
+      targetId: targetId,
+      note: note,
     );
   }
 
   final String id;
   final String description;
   final DateTime createdAt;
+  final String? actionType;
+  final String? targetType;
+  final String? targetId;
+  final String? note;
   final String? actorName;
 }
 

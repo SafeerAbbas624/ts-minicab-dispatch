@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/models/admin_models.dart';
 import '../../../core/utils/formatters.dart';
 import '../application/admin_providers.dart';
 
@@ -26,6 +27,7 @@ class ActionLogScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final entry = entries[index];
               return ListTile(
+                onTap: () => _showEntryDetail(context, entry),
                 title: Text(entry.description),
                 subtitle: Text(
                   [
@@ -37,6 +39,35 @@ class ActionLogScreen extends ConsumerWidget {
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showEntryDetail(BuildContext context, ActionLogEntry entry) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Action details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(entry.description),
+            const SizedBox(height: 12),
+            if (entry.actorName != null) Text('By: ${entry.actorName}'),
+            Text('When: ${formatDateTime(entry.createdAt)}'),
+            if (entry.actionType != null) Text('Action type: ${entry.actionType}'),
+            if (entry.targetType != null && entry.targetId != null)
+              Text('Target: ${entry.targetType} (${entry.targetId})'),
+            if (entry.note != null && entry.note!.isNotEmpty) Text('Note: ${entry.note}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
