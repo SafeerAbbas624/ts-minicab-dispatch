@@ -134,10 +134,8 @@ class AdminRepository {
     return list.map(CancellationRequest.fromJson).toList();
   }
 
-  /// NOTE: live testing showed `penalize: false` still logs a penalty note
-  /// on the driver's record — same as `penalize: true`. Flagged to the
-  /// backend as a suspected bug; the toggle is wired here regardless so it
-  /// starts working correctly once fixed server-side.
+  /// Confirmed live: `penalize: false` correctly skips the driver-notes
+  /// penalty write, `penalize: true` logs it as before.
   Future<void> approveCancellationRequest(String id, {String? reviewNote, required bool penalize}) =>
       _client.post('/admin/cancellation-requests/$id/approve', data: {
         if (reviewNote != null && reviewNote.isNotEmpty) 'reviewNote': reviewNote,

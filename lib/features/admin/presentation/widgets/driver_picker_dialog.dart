@@ -10,9 +10,8 @@ import '../../application/admin_providers.dart';
 /// pinned at the top too — for a job that already has a driver, this is an
 /// alternative to picking a specific one (distinguished by [onReopenToPool]
 /// having been called instead of the dialog returning a driver); omit it for
-/// an open job, where there's no current driver to unassign. Only searches
-/// by name/email — the admin driver list endpoint doesn't return a phone
-/// number to search by (see docs/BACKEND_REQUESTS.md).
+/// an open job, where there's no current driver to unassign. Searches by
+/// name, email, or phone number.
 Future<AdminDriverSummary?> showDriverPickerDialog(
   BuildContext context, {
   VoidCallback? onReopenToPool,
@@ -63,7 +62,7 @@ class _DriverPickerDialogState extends ConsumerState<_DriverPickerDialog> {
               child: TextField(
                 controller: _searchController,
                 decoration: const InputDecoration(
-                  labelText: 'Search drivers by name or email',
+                  labelText: 'Search drivers by name, email, or number',
                   prefixIcon: Icon(Icons.search),
                 ),
                 onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
@@ -100,12 +99,20 @@ class _DriverPickerDialogState extends ConsumerState<_DriverPickerDialog> {
                   // accounts here too rather than offering to hand them a
                   // job they can't actually work.
                   final assignable = drivers.where((d) => d.accountStatus != 'suspended');
+                  // Phone numbers are matched digit-only so a query like
+                  // "7700900123" matches a stored "+447700900123" without
+                  // the admin having to type the country code / punctuation.
+                  final queryDigits = _query.replaceAll(RegExp(r'\D'), '');
                   final filtered = _query.isEmpty
                       ? assignable.toList()
                       : assignable
                           .where((d) =>
                               d.fullName.toLowerCase().contains(_query) ||
-                              d.email.toLowerCase().contains(_query))
+                              d.email.toLowerCase().contains(_query) ||
+                              (queryDigits.isNotEmpty &&
+                                  (d.phoneNumber ?? '')
+                                      .replaceAll(RegExp(r'\D'), '')
+                                      .contains(queryDigits)))
                           .toList();
                   if (filtered.isEmpty) {
                     return const Padding(
@@ -121,7 +128,11 @@ class _DriverPickerDialogState extends ConsumerState<_DriverPickerDialog> {
                       return ListTile(
                         leading: const Icon(Icons.person_outline),
                         title: Text(driver.fullName),
-                        subtitle: Text(driver.email),
+                        subtitle: Text(
+                          driver.phoneNumber == null
+                              ? driver.email
+                              : '${driver.email} · ${driver.phoneNumber}',
+                        ),
                         onTap: () => Navigator.of(context).pop(driver),
                       );
                     },

@@ -28,21 +28,42 @@ class JobsShellScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final index = ref.watch(jobsSubTabIndexProvider);
-    return Column(
+    return Stack(
       children: [
-        Expanded(child: IndexedStack(index: index, children: _tabs)),
-        NavigationBar(
-          selectedIndex: index,
-          onDestinationSelected: (i) => ref.read(jobsSubTabIndexProvider.notifier).state = i,
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.add_road), label: 'Post a Job'),
-            NavigationDestination(icon: Icon(Icons.language), label: 'Website Jobs'),
-            NavigationDestination(icon: Icon(Icons.local_taxi_outlined), label: 'Active Jobs'),
-            NavigationDestination(icon: Icon(Icons.badge_outlined), label: 'Accepted'),
-            NavigationDestination(icon: Icon(Icons.task_alt), label: 'Completed'),
-            NavigationDestination(icon: Icon(Icons.report_gmailerrorred), label: 'Cancellations'),
+        Column(
+          children: [
+            Expanded(child: IndexedStack(index: index, children: _tabs)),
+            NavigationBar(
+              selectedIndex: index,
+              onDestinationSelected: (i) => ref.read(jobsSubTabIndexProvider.notifier).state = i,
+              destinations: const [
+                NavigationDestination(icon: Icon(Icons.add_road), label: 'Post a Job'),
+                NavigationDestination(icon: Icon(Icons.language), label: 'Website Jobs'),
+                NavigationDestination(icon: Icon(Icons.local_taxi_outlined), label: 'Active Jobs'),
+                NavigationDestination(icon: Icon(Icons.badge_outlined), label: 'Accepted'),
+                NavigationDestination(icon: Icon(Icons.task_alt), label: 'Completed'),
+                NavigationDestination(icon: Icon(Icons.report_gmailerrorred), label: 'Cancellations'),
+              ],
+            ),
           ],
         ),
+        // The bottom nav has no room for a 7th destination, so a floating
+        // "Post a Job" bubble (WhatsApp-style) gives one-tap access from
+        // every other sub-tab instead — hidden on the Post a Job tab itself
+        // since it'd be redundant there. This screen has no Scaffold of its
+        // own (it's a drawer destination inside AdminShell's), so the FAB is
+        // positioned by hand rather than via Scaffold's floatingActionButton
+        // slot — same pattern as TflExportScreen.
+        if (index != 0)
+          Positioned(
+            right: 16,
+            bottom: 110,
+            child: FloatingActionButton(
+              onPressed: () => ref.read(jobsSubTabIndexProvider.notifier).state = 0,
+              tooltip: 'Post a Job',
+              child: const Icon(Icons.add_road),
+            ),
+          ),
       ],
     );
   }

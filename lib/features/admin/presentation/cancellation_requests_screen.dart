@@ -57,11 +57,7 @@ class _RequestRowState extends ConsumerState<_RequestRow> {
         title: const Text('Approve cancellation'),
         content: const Text(
           "This releases the job back to the pool. If the driver's reason doesn't hold "
-          'up, you can log a penalty note on their record at the same time.\n\n'
-          'Known issue: the penalty toggle is not yet respected by the backend — every '
-          'approval currently logs a penalty note regardless of this choice. Flagged to '
-          'the backend session; treat the note on the driver record as informational '
-          'until fixed.',
+          'up, you can log a penalty note on their record at the same time.',
         ),
         actions: [
           TextButton(

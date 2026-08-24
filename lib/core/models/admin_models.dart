@@ -14,6 +14,7 @@ class AdminDriverSummary {
     required this.email,
     required this.status,
     required this.accountStatus,
+    this.phoneNumber,
   });
 
   /// Confirmed against the backend's own generated API reference: the id
@@ -23,6 +24,8 @@ class AdminDriverSummary {
   /// status is `approval_status` (pending/approved/rejected — no
   /// "suspended" value exists here); the plain `status` field is account
   /// state (active/suspended/deletion_requested), a separate concept.
+  /// `phone_number` was added to this endpoint's response after a backend
+  /// fix pass specifically so admin-side driver search could match on it.
   factory AdminDriverSummary.fromJson(Map<String, dynamic> json) {
     return AdminDriverSummary(
       id: json['user_id'].toString(),
@@ -31,6 +34,7 @@ class AdminDriverSummary {
       email: json['email'] as String? ?? '',
       status: json['approval_status'] as String? ?? 'pending',
       accountStatus: json['status'] as String? ?? 'active',
+      phoneNumber: json['phone_number'] as String?,
     );
   }
 
@@ -40,6 +44,7 @@ class AdminDriverSummary {
   final String email;
   final String status;
   final String accountStatus;
+  final String? phoneNumber;
 
   String get fullName => '$forename $surname'.trim();
 }

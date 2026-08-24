@@ -2,7 +2,7 @@
 
 Everything below is needed to finish the feature list requested on this date. Each item says what's missing, why, and a suggested shape — the backend session should treat the suggested shape as a starting point, not a spec set in stone. Client-side work that depends on each item is noted so priority can be judged.
 
-**Status, 25 Aug 2026: all 6 items delivered and live. Client-side wiring for all of them is done and live-verified against the real API on the emulator — see the "Delivered" / "Client impact" note on each item below. One open bug remains: item 5's `penalize: false` flag is not respected server-side (see that section).**
+**Status, 25 Aug 2026: all 6 items delivered and live, client-side wiring done and live-verified — see the "Delivered" / "Client impact" note on each item below. The two follow-up bugs (item 5's `penalize: false`, and the review-note field-name mismatch) are now fixed and re-verified live; item 4's phone-number gap is also fixed. Nothing open as of this update.**
 
 ## 1. Prevent a driver from holding more than one active job at once
 
@@ -36,7 +36,7 @@ Current `DocumentType` enum: `phv_licence | insurance | dbs | mot | other`. Conf
 
 **Needed:** a new endpoint, e.g. `POST /admin/jobs/:id/assign` with `{"driver_id": "..."}` — sets `currentDriverId` and status directly (bypassing the normal self-service accept race), presumably validating the target driver is `approved`/`active`. Whether the existing reassign-to-pool behavior should stay as a separate action or be replaced entirely by "reassign always means pick a specific driver" is a product call — the client can support either.
 
-**Client impact:** built and live-verified — the driver picker (name/email search) now calls the real `/assign` endpoint. Wired into both the Accepted Jobs tab's "Reassign" (with "Reopen to general pool" still pinned at the top) and the Active Jobs tab's new "Assign to driver" action, confirmed `/assign` works from `open` status too. `GET /admin/drivers` still doesn't return a phone number, so search only matches name/email — if phone-number search matters, that field still needs adding to the list response.
+**Client impact:** built and live-verified — the driver picker now calls the real `/assign` endpoint. Wired into both the Accepted Jobs tab's "Reassign" (with "Reopen to general pool" still pinned at the top) and the Active Jobs tab's new "Assign to driver" action, confirmed `/assign` works from `open` status too. `GET /admin/drivers` now returns `phone_number` (fixed 25 Aug) — search matches name, email, or number (digit-only comparison so punctuation/country-code formatting doesn't matter).
 
 ## 5. Cancellation-request/approval workflow with a 2-hour cutoff
 
@@ -51,9 +51,9 @@ This is the biggest new piece — a genuinely new workflow, not an extension of 
 - `POST /jobs/:id/request-cancellation` (driver) — body `{"reason": "..."}`. Confirmed this is the single entry point for both cases: the backend itself checks time-to-pickup — more than 2 hours out, the job is released immediately (no request row created); under 2 hours, a pending `CancellationRequest` is created instead and the job stays assigned until reviewed.
 - `GET /admin/cancellation-requests` — confirmed live, returns all requests (pending/approved/rejected) with the job and driver nested.
 - Two separate endpoints, **not** a unified `/review` as I originally suggested: `POST /admin/cancellation-requests/:id/approve` (body `{"reviewNote": "...", "penalize": true|false}`) and `POST /admin/cancellation-requests/:id/reject` (body `{"note": "..."}`). Approve releases the job back to the pool; reject leaves it assigned, nothing changes.
-- **Bug found in live testing:** `penalize: false` on the approve endpoint still logs a penalty note on the driver's record — same behavior as `penalize: true`. Tested twice with fresh requests to rule out a fluke. The client now sends the flag correctly and shows a warning about this in the approve dialog, but the toggle currently has no effect server-side. Needs a fix so `penalize: false` skips writing the driver note.
+- **Both follow-up bugs fixed and re-verified live (25 Aug):** `penalize: false` now correctly skips the driver-notes write (confirmed: notes count unchanged after a `penalize: false` approve, incremented as expected after a `penalize: true` one on a fresh request). The review-note field-name mismatch (`reviewNote`/`note` from the client vs. a schema that only recognized `review_note`) is fixed — the endpoints now accept `review_note`, `reviewNote` (approve), and `note` (approve or reject) interchangeably; confirmed `reviewNote` persists correctly in the `GET /admin/cancellation-requests` response for both approve and reject.
 
-**Client impact:** built and live-verified — driver-side warning dialog (copy below) wired to `request-cancellation`, a "Pending cancellation" banner that disables the active-job actions, and an admin Cancellations inbox tab with Approve/Reject.
+**Client impact:** built and live-verified — driver-side warning dialog (copy below) wired to `request-cancellation`, a "Pending cancellation" banner that disables the active-job actions, and an admin Cancellations inbox tab with Approve/Reject (penalty-note warning removed from the approve dialog now that the toggle works correctly).
 
 **Suggested dialog copy** for the driver-side cancellation-request flow (shown when a driver tries to cancel within 2 hours of pickup):
 
