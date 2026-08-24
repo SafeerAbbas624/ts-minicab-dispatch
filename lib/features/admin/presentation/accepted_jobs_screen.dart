@@ -8,12 +8,14 @@ import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 import 'widgets/job_detail_dialog.dart';
 
-/// Jobs waiting for a driver to pick them up — status "open" only. Jobs a
-/// driver has already accepted live on the separate Accepted Jobs sub-tab
-/// instead, so this list doesn't mix "needs a driver" with "already has
-/// one" the way the old combined Active Jobs tab did.
-class PendingJobsScreen extends ConsumerWidget {
-  const PendingJobsScreen({super.key});
+const _acceptedStatuses = {'accepted', 'arrived'};
+
+/// Jobs a driver already has — accepted or arrived (en route to/at pickup).
+/// Split out from the old combined Active Jobs tab so "needs a driver" and
+/// "already has one" aren't mixed in the same list. Reassign only makes
+/// sense here — an open job has no driver to unassign.
+class AcceptedJobsScreen extends ConsumerWidget {
+  const AcceptedJobsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,9 +25,9 @@ class PendingJobsScreen extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(child: Text(error.toString())),
       data: (allJobs) {
-        final jobs = allJobs.where((j) => j.status == 'open').toList();
+        final jobs = allJobs.where((j) => _acceptedStatuses.contains(j.status)).toList();
         if (jobs.isEmpty) {
-          return const Center(child: Text('No open jobs'));
+          return const Center(child: Text('No accepted jobs'));
         }
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(adminJobsProvider(null)),
@@ -90,6 +92,24 @@ class _JobRowState extends ConsumerState<_JobRow> {
     }
   }
 
+  Future<void> _reassign() async {
+    setState(() => _isSubmitting = true);
+    try {
+      await ref.read(adminRepositoryProvider).reassignJob(widget.job.id);
+      ref.invalidate(adminJobsProvider(null));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Job reopened for reassignment')));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final job = widget.job;
@@ -109,9 +129,21 @@ class _JobRowState extends ConsumerState<_JobRow> {
               ),
               Text('${job.pickupLocation} → ${job.dropoffLocation}'),
               Text('${job.customerName} · ${formatCurrency(job.fare)}'),
+              Text(
+                // No accepted-driver name in the job payload, only an id —
+                // full name/phone shows in the detail popup instead, which
+                // fetches it on demand.
+                'Accepted by driver ${job.acceptedByDriverId}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [
+                  TextButton(
+                    onPressed: _isSubmitting ? null : _reassign,
+                    child: const Text('Reassign / Reopen'),
+                  ),
+                  const SizedBox(width: 8),
                   TextButton(
                     onPressed: _isSubmitting ? null : _cancel,
                     style:

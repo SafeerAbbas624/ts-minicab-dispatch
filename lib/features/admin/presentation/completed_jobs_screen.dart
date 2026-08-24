@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/formatters.dart';
 import '../application/admin_providers.dart';
+import 'widgets/job_detail_dialog.dart';
 
 /// "Completed Jobs" sub-tab under the Jobs mega-tab — every completed job,
 /// paid or not (mark-paid itself lives under the Payments tab now). Each
@@ -32,6 +33,7 @@ class CompletedJobsScreen extends ConsumerWidget {
               final isPaid = job.payment?.isPaid ?? false;
               return Card(
                 child: ListTile(
+                  onTap: () => showJobDetailDialog(context, job),
                   title: Text(formatDateTime(job.pickupDatetime)),
                   subtitle:
                       Text('${job.customerName} · ${job.pickupLocation} → ${job.dropoffLocation}'),

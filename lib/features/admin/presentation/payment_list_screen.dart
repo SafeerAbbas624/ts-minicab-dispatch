@@ -10,6 +10,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/upload_validation.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
+import 'widgets/job_detail_dialog.dart';
 
 /// One tab of PaymentsShellScreen. The paid tab reads GET
 /// /admin/payments?status=paid directly (reliable — a paid Payment row
@@ -160,6 +161,7 @@ class _PaymentRowState extends ConsumerState<_PaymentRow> {
     final driver = payment.driver;
     return Card(
       child: ListTile(
+        onTap: job != null ? () => showJobDetailDialog(context, job) : null,
         title: Text(job != null ? formatDateTime(job.pickupDatetime) : 'Job ${payment.jobId}'),
         subtitle: Text([
           if (job != null) '${job.customerName} · ${job.pickupLocation} → ${job.dropoffLocation}',

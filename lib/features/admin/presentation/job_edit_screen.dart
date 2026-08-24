@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/vehicle_classes.dart';
 import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/admin_repository.dart';
@@ -22,6 +23,8 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
   late final TextEditingController _customerContactController;
   late final TextEditingController _fareController;
   late final TextEditingController _notesController;
+  late DateTime _pickupDatetime;
+  late String _vehicleClass;
   bool _isSaving = false;
 
   @override
@@ -34,6 +37,31 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
     _customerContactController = TextEditingController(text: job.customerContact);
     _fareController = TextEditingController(text: job.fare.toString());
     _notesController = TextEditingController(text: job.notes ?? '');
+    _pickupDatetime = job.pickupDatetime;
+    // The job's own vehicleClass may be a value from before the fleet list
+    // changed — fall back to the first option rather than a dropdown with
+    // no matching item selected.
+    _vehicleClass = vehicleClasses.any((c) => c.value == job.vehicleClass)
+        ? job.vehicleClass!
+        : vehicleClasses.first.value;
+  }
+
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _pickupDatetime,
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_pickupDatetime),
+    );
+    if (time == null) return;
+    setState(() {
+      _pickupDatetime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
   }
 
   @override
@@ -55,11 +83,13 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
       // (confirmed via the backend's API reference) — different casing than
       // the camelCase GET response, intentionally.
       await ref.read(adminRepositoryProvider).updateJob(widget.job.id, {
+        'pickup_datetime': _pickupDatetime.toUtc().toIso8601String(),
         'pickup_address': _pickupLocationController.text.trim(),
         'dropoff_address': _dropoffLocationController.text.trim(),
         'customer_name': _customerNameController.text.trim(),
         'customer_contact': _customerContactController.text.trim(),
         'fare_amount': double.parse(_fareController.text.trim()),
+        'vehicle_class_requested': _vehicleClass,
         'notes': _notesController.text.trim(),
       });
       if (!mounted) return;
@@ -84,6 +114,14 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Pickup date/time'),
+                  subtitle: Text(_pickupDatetime.toString()),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: _pickDateTime,
+                ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _pickupLocationController,
                   decoration: const InputDecoration(labelText: 'Pickup location'),
@@ -114,6 +152,19 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   validator: (v) =>
                       (v == null || double.tryParse(v) == null) ? 'Enter a number' : null,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: _vehicleClass,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Vehicle class'),
+                  items: vehicleClasses
+                      .map((c) => DropdownMenuItem(
+                            value: c.value,
+                            child: Text('${c.value} — ${c.tagline} (${c.subtitle})'),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setState(() => _vehicleClass = v!),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

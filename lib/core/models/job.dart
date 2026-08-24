@@ -21,6 +21,7 @@ class Job {
     this.notes,
     this.acceptedByDriverId,
     this.payment,
+    this.vehicleClass,
   });
 
   /// Field names are camelCase on the wire (`pickupDatetime`, `pickupAddress`,
@@ -47,6 +48,7 @@ class Job {
       notes: json['notes'] as String?,
       acceptedByDriverId: json['currentDriverId']?.toString(),
       payment: json['payment'] != null ? Payment.fromJson(json['payment'] as Map<String, dynamic>) : null,
+      vehicleClass: json['vehicleClassRequested'] as String?,
     );
   }
 
@@ -60,6 +62,7 @@ class Job {
   final String status;
   final String? source;
   final String? notes;
+  final String? vehicleClass;
   final String? acceptedByDriverId;
   final Payment? payment;
 }

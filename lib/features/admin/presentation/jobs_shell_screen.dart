@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/admin_providers.dart';
+import 'accepted_jobs_screen.dart';
 import 'completed_jobs_screen.dart';
 import 'job_posting_screen.dart';
 import 'pending_jobs_screen.dart';
@@ -10,10 +11,13 @@ import 'website_jobs_queue_screen.dart';
 class JobsShellScreen extends ConsumerWidget {
   const JobsShellScreen({super.key});
 
+  // Index order also referenced by dashboard_screen.dart's stat-card
+  // shortcuts — keep both in sync if this changes.
   static const _tabs = [
     JobPostingScreen(),
     WebsiteJobsQueueScreen(),
     PendingJobsScreen(),
+    AcceptedJobsScreen(),
     CompletedJobsScreen(),
   ];
 
@@ -30,6 +34,7 @@ class JobsShellScreen extends ConsumerWidget {
             NavigationDestination(icon: Icon(Icons.add_road), label: 'Post a Job'),
             NavigationDestination(icon: Icon(Icons.language), label: 'Website Jobs'),
             NavigationDestination(icon: Icon(Icons.local_taxi_outlined), label: 'Active Jobs'),
+            NavigationDestination(icon: Icon(Icons.badge_outlined), label: 'Accepted'),
             NavigationDestination(icon: Icon(Icons.task_alt), label: 'Completed'),
           ],
         ),

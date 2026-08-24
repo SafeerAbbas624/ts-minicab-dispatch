@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/vehicle_classes.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/admin_repository.dart';
 
@@ -20,10 +21,8 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
   final _fareController = TextEditingController();
   final _notesController = TextEditingController();
   DateTime? _pickupDatetime;
-  String _vehicleClass = _vehicleClasses.first;
+  String _vehicleClass = vehicleClasses.first.value;
   bool _isSaving = false;
-
-  static const _vehicleClasses = ['Saloon', 'Estate', 'MPV', 'Executive'];
 
   @override
   void dispose() {
@@ -68,7 +67,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
     _notesController.clear();
     setState(() {
       _pickupDatetime = null;
-      _vehicleClass = _vehicleClasses.first;
+      _vehicleClass = vehicleClasses.first.value;
     });
   }
 
@@ -157,9 +156,13 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: _vehicleClass,
+                  isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Vehicle class'),
-                  items: _vehicleClasses
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  items: vehicleClasses
+                      .map((c) => DropdownMenuItem(
+                            value: c.value,
+                            child: Text('${c.value} — ${c.tagline} (${c.subtitle})'),
+                          ))
                       .toList(),
                   onChanged: (v) => setState(() => _vehicleClass = v!),
                 ),

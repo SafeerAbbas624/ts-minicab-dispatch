@@ -47,7 +47,7 @@ class DashboardScreen extends ConsumerWidget {
               label: 'Completed jobs',
               value: '${analytics.completedJobs}',
               icon: Icons.task_alt,
-              onTap: () => _go(ref, tab: 1, jobsSub: 3),
+              onTap: () => _go(ref, tab: 1, jobsSub: 4),
             ),
             _StatCard(
               label: 'Active approved drivers',
