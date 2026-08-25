@@ -2,7 +2,7 @@
 
 Everything below is needed to finish the feature list requested on this date. Each item says what's missing, why, and a suggested shape — the backend session should treat the suggested shape as a starting point, not a spec set in stone. Client-side work that depends on each item is noted so priority can be judged.
 
-**Status, 25 Aug 2026: all 6 items delivered and live, client-side wiring done and live-verified — see the "Delivered" / "Client impact" note on each item below. The two follow-up bugs (item 5's `penalize: false`, and the review-note field-name mismatch) are now fixed and re-verified live; item 4's phone-number gap is also fixed. Nothing open as of this update.**
+**Status, 25 Aug 2026: all 6 items delivered and live, client-side wiring done and live-verified — see the "Delivered" / "Client impact" note on each item below. The two follow-up bugs (item 5's `penalize: false`, and the review-note field-name mismatch) are now fixed and re-verified live; item 4's phone-number gap is also fixed. One new item found and open: item 7, `POST /push-tokens` rejects admin accounts with 403.**
 
 ## 1. Prevent a driver from holding more than one active job at once
 
@@ -72,6 +72,16 @@ This is the biggest new piece — a genuinely new workflow, not an extension of 
 The new admin job-detail popup shows current status, but not a timeline of what's happened to the job (accepted at X, arrived at Y, etc.) — that's the `JobEvent` model, which per the API reference "isn't directly exposed via any GET route yet." If a running history/notification feed in the popup is wanted (not just current status), this needs `GET /admin/jobs/:id/events` or the events nested directly in the job detail response.
 
 **Client impact:** built and live-verified — the job detail popup now has a History section listing every event (created, opened, accepted, etc.) with timestamp, actor, and note, confirmed rendering real data including the "Assigned directly by admin" note from item 4's `/assign` endpoint.
+
+## 7. `POST /push-tokens` returns 403 for admin accounts
+
+**Confirmed live, 25 Aug:** tested this endpoint directly with both an admin token and a driver token, same request body. Driver token → `201 {"message": "Push token registered"}`. Admin token (demo_admin) → `403 Forbidden`, empty body. This directly contradicts the API reference's own note that the endpoint is "role-agnostic" and admins should register through it too — right now only drivers actually can.
+
+**Impact today:** the admin app calls this on every login/session-restore (fire-and-forget, doesn't block anything) and it always fails with 403, so no admin device is currently registered for push — none of the "To admins" notifications documented in the Push notifications reference section (job-needs-approval alerts, etc.) can reach anyone right now.
+
+**Needed:** whatever permission check is rejecting admin/super_admin/demo_admin roles on this route needs removing — the client already calls it correctly (confirmed matching the documented `{"device_token", "platform"}` shape) and doesn't need any change once this is fixed.
+
+**Client impact:** none needed — already wired up and calling correctly; this is purely a server-side fix.
 
 ---
 

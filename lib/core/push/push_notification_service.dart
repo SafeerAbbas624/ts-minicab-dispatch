@@ -6,13 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'push_token_repository.dart';
 
 /// Registers this device's FCM token with the backend on login/app start and
-/// again on every token refresh, per the spec.
-///
-/// NOT wired up yet — call [PushNotificationService.initialize] from
-/// main.dart once google-services.json / GoogleService-Info.plist exist and
-/// Firebase.initializeApp() is safe to call. Doing that before the config
-/// files exist breaks the Android build (the Gradle Google Services plugin
-/// needs google-services.json to be present).
+/// again on every token refresh, per the spec. Called from
+/// AuthController._registerPushToken() on both login and session restore.
 class PushNotificationService {
   PushNotificationService(this._ref);
 
