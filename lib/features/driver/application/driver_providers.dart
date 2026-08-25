@@ -37,3 +37,10 @@ final activeJobProvider = FutureProvider.autoDispose<Job?>((ref) async {
   }
   return null;
 });
+
+/// Which bottom-nav tab DriverShell is showing: 0=Jobs, 1=History,
+/// 2=Earnings, 3=Settings. Held as shared state (not local widget state) so
+/// PendingApprovalView can jump straight to Settings > Documents from
+/// wherever it's shown, the same pattern the admin dashboard's stat-card
+/// shortcuts already use.
+final driverTabIndexProvider = StateProvider<int>((ref) => 0);

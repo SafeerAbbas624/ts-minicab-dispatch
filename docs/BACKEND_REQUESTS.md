@@ -2,7 +2,7 @@
 
 Everything below is needed to finish the feature list requested on this date. Each item says what's missing, why, and a suggested shape — the backend session should treat the suggested shape as a starting point, not a spec set in stone. Client-side work that depends on each item is noted so priority can be judged.
 
-**Status, 25 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text.
+**Status, 26 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text. **New and open: item 10** — two new job-status steps (Start Job, Passenger On Board) with notifications, needs backend support before the client can wire the buttons up for real. Item 11 was a client-only fix, no backend involved.
 
 ## 1. Prevent a driver from holding more than one active job at once
 
@@ -115,6 +115,26 @@ Given demo_admin/demo_driver are real, ongoing App Store/Play Store reviewer acc
 **Delivered 25 Aug** — every push now carries `data.type` plus whichever ids apply (job_id/driver_id/document_id/payment_id/request_id, all strings, omitted rather than `"null"` when not relevant), covering all 20 triggers across every route file. Verified both structurally (a direct Firebase Admin SDK call) and end-to-end (a real admin device token registered, a job-accept triggered, delivery confirmed, cleaned up).
 
 **Client impact:** done — `push_notification_service.dart` now routes on `data['type']` (a fixed switch over the "To admins" type codes) instead of matching title text. Deep-linking to the *specific* record (not just the containing tab) isn't built yet — no screen currently supports opening a job/driver detail by id from outside its list — but the ids are already flowing through so that's addable later without another backend round-trip.
+
+## 10. Two new job-status steps: "Start Job" and "Passenger On Board"
+
+**Requested:** the driver's active-job flow currently only has two steps after accepting — Arrived, then Completed. Wanted: four — **Start Job → Arrived to Pickup → Passenger On Board → Clear/Done** — with a push notification at each step, same as the existing ones.
+
+Two of these four already exist and needed no backend change — I relabeled the buttons client-side (`active_job_view.dart`): "Arrived" → **Arrived to Pickup** (still posts `status: "arrived"`), "Trip Completed" → **Clear / Done** (still posts `status: "completed"`). The other two are genuinely new states with no current backend representation, so the buttons for them aren't wired up yet — building them as no-op UI would be dishonest since nothing would persist, no admin would see it, and no notification would fire.
+
+**Needed — suggested shape, naming is yours to change:**
+- Two new `JobStatus` values inserted into the sequence: `en_route` (between `accepted` and `arrived` — driver tapped "Start Job") and `passenger_on_board` (between `arrived` and `completed` — driver tapped "Passenger On Board"). Full sequence becomes `accepted → en_route → arrived → passenger_on_board → completed`.
+- `POST /jobs/:id/status` accepts these two new values with the same strict-sequence validation the existing ones already have (409 if called out of order).
+- Two new `JobEventType` values (`en_route`, `passenger_on_board`) so they show up in the admin job-detail History timeline like every other transition.
+- Two new "To admins" push notifications, same pattern as the existing `job_accepted`/`driver_arrived`/`job_completed` ones — suggested: `{type: "job_started", title: "Job started"}` and `{type: "passenger_on_board", title: "Passenger on board"}`, both carrying `job_id`, `driver_id`.
+
+**Also needs a decision:** the Accepted Jobs admin tab currently groups jobs by `status in {accepted, arrived}`. Once `en_route`/`passenger_on_board` exist, should that tab widen to `{accepted, en_route, arrived, passenger_on_board}` (all "driver has it, trip in progress" states shown together, which is what I'd assume you want), or should some of these get their own tab? Client can do either once the statuses exist.
+
+**Client impact:** once these exist, I'll add the two new buttons to `active_job_view.dart` (matching the same "one active step visible" pattern as today), extend the admin Accepted Jobs tab's status grouping, and add the two new type codes to `push_notification_service.dart`'s routing switch.
+
+## 11. Bottom-nav label overlap on narrow phones
+
+**Found and fixed client-side, no backend involved** — the admin Jobs tab's 5-item bottom nav ("Website Jobs", "Active Jobs", "Accepted", "Completed", "Cancellations") wrapped and visually overlapped on narrow/low-resolution phones. Shortened the two long ones to "Website" and "Active" (the tab itself is already titled "Jobs", so dropping the repeated word reads fine).
 
 ---
 

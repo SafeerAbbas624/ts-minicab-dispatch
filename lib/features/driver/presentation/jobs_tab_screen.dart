@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../application/driver_providers.dart';
 import 'job_detail_screen.dart';
 import 'widgets/active_job_view.dart';
 import 'widgets/job_card.dart';
+import 'widgets/pending_approval_view.dart';
 
 class JobsTabScreen extends ConsumerWidget {
   const JobsTabScreen({super.key});
@@ -15,16 +17,33 @@ class JobsTabScreen extends ConsumerWidget {
 
     return activeJobAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => _ErrorView(
-        message: error.toString(),
-        // activeJobProvider derives from myJobsProvider — if that's what
-        // actually failed, invalidating only activeJobProvider re-reads the
-        // same cached failure instead of retrying the real request.
-        onRetry: () {
-          ref.invalidate(myJobsProvider);
-          ref.invalidate(activeJobProvider);
-        },
-      ),
+      error: (error, stack) {
+        // The backend has no "approval status" field on the session — it
+        // 403s job-related calls for a not-yet-approved/suspended/rejected
+        // driver, with the reason in the response body, so that's the real
+        // signal. Scoped to just this tab (not the whole shell) so a pending
+        // driver can still reach Settings > Documents to upload what an
+        // admin needs to review.
+        if (error is ApiException && error.isForbidden) {
+          return PendingApprovalView(
+            message: error.message,
+            onRefresh: () {
+              ref.invalidate(myJobsProvider);
+              ref.invalidate(activeJobProvider);
+            },
+          );
+        }
+        return _ErrorView(
+          message: error.toString(),
+          // activeJobProvider derives from myJobsProvider — if that's what
+          // actually failed, invalidating only activeJobProvider re-reads the
+          // same cached failure instead of retrying the real request.
+          onRetry: () {
+            ref.invalidate(myJobsProvider);
+            ref.invalidate(activeJobProvider);
+          },
+        );
+      },
       data: (activeJob) {
         if (activeJob != null) {
           return ActiveJobView(job: activeJob);

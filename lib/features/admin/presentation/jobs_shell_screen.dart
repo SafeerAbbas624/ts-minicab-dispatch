@@ -45,8 +45,13 @@ class JobsShellScreen extends ConsumerWidget {
               onDestinationSelected: (i) =>
                   ref.read(jobsSubTabIndexProvider.notifier).state = i + 1,
               destinations: const [
-                NavigationDestination(icon: Icon(Icons.language), label: 'Website Jobs'),
-                NavigationDestination(icon: Icon(Icons.local_taxi_outlined), label: 'Active Jobs'),
+                // "Website"/"Active" rather than "Website Jobs"/"Active
+                // Jobs" — with 5 destinations the full labels wrapped and
+                // overlapped the next item on narrow phones. Every label on
+                // this bar reads fine without "Jobs" since the tab is
+                // already titled "Jobs".
+                NavigationDestination(icon: Icon(Icons.language), label: 'Website'),
+                NavigationDestination(icon: Icon(Icons.local_taxi_outlined), label: 'Active'),
                 NavigationDestination(icon: Icon(Icons.badge_outlined), label: 'Accepted'),
                 NavigationDestination(icon: Icon(Icons.task_alt), label: 'Completed'),
                 NavigationDestination(icon: Icon(Icons.report_gmailerrorred), label: 'Cancellations'),

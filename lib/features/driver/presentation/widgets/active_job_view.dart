@@ -214,17 +214,23 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
           ),
         ),
         const SizedBox(height: 24),
+        // Full requested flow is Start Job / Arrived to Pickup / Passenger
+        // On Board / Clear-Done — the middle two steps map onto the
+        // existing accepted/arrived/completed statuses, but "Start Job" and
+        // "Passenger On Board" need a real status the backend can persist
+        // and notify on first (see docs/BACKEND_REQUESTS.md item 10) before
+        // they can be real buttons here rather than no-ops.
         if (!hasArrived)
           FilledButton.icon(
             onPressed: _isSubmitting || pendingCancellation ? null : _markArrived,
             icon: const Icon(Icons.pin_drop),
-            label: const Text('Arrived'),
+            label: const Text('Arrived to Pickup'),
           ),
         if (hasArrived)
           FilledButton.icon(
             onPressed: _isSubmitting || pendingCancellation ? null : _markCompleted,
             icon: const Icon(Icons.check_circle),
-            label: const Text('Trip Completed'),
+            label: const Text('Clear / Done'),
           ),
         const SizedBox(height: 12),
         OutlinedButton(
