@@ -27,13 +27,12 @@ const _androidChannel = AndroidNotificationChannel(
 /// foreground once [setForegroundNotificationPresentationOptions] opts in,
 /// so the local-notifications path is Android-only.
 ///
-/// Tap routing: the backend's notification payload is a plain
-/// `{notification: {title, body}}` with no custom data keys yet (see
-/// docs/BACKEND_REQUESTS.md), so there's nothing to route on except the
-/// title text — matched here against the admin notification catalog to jump
-/// straight to the relevant tab. Anything unmatched, or any driver-side
-/// notification, just opens the app to wherever it already was; there's no
-/// equivalent tab-index state on the driver side to route into yet.
+/// Tap routing: every push now carries `data.type` (a stable code, e.g.
+/// `"job_completed"`) alongside the display `notification` block — see the
+/// Push notifications reference section. Routes admin-side types straight to
+/// the relevant tab. Driver-side types and the broadcast "new job available"
+/// have no equivalent tab-index state to route into yet, so they just open
+/// the app to wherever it already was.
 class PushNotificationService {
   PushNotificationService(this._ref)
       : _localNotifications = FlutterLocalNotificationsPlugin();
@@ -84,8 +83,8 @@ class PushNotificationService {
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       ),
       onDidReceiveNotificationResponse: (response) {
-        final title = response.payload;
-        if (title != null) _routeFromTitle(title);
+        final type = response.payload;
+        if (type != null) _routeFromType(type);
       },
     );
   }
@@ -106,38 +105,41 @@ class PushNotificationService {
           priority: Priority.high,
         ),
       ),
-      payload: notification.title,
+      payload: message.data['type'] as String?,
     );
   }
 
   void _routeFromMessage(RemoteMessage message) {
-    final title = message.notification?.title;
-    if (title != null) _routeFromTitle(title);
+    final type = message.data['type'] as String?;
+    if (type != null) _routeFromType(type);
   }
 
-  void _routeFromTitle(String title) {
+  void _routeFromType(String type) {
     final role = _ref.read(authControllerProvider).role;
     if (role == null || !role.isAdminFamily) return;
 
     // tab indices match AdminShell's drawer order (Dashboard, Jobs, Drivers,
     // ...); jobsSub/driversSub match JobsShellScreen/DriversShellScreen's own
-    // tab order — see admin_providers.dart's own index-order comments.
-    switch (title) {
-      case 'New job pending approval':
+    // tab order — see admin_providers.dart's own index-order comments. Type
+    // codes match the "To admins" table in the Push notifications reference
+    // section; driver-facing types and the broadcast "new_job_available"
+    // aren't listed here since there's no admin-side tab for them.
+    switch (type) {
+      case 'new_job_pending_approval':
         _goAdmin(tab: 1, jobsSub: 1);
-      case 'New driver signup':
+      case 'new_driver_signup':
         _goAdmin(tab: 2, driversSub: 1);
-      case 'Account deletion requested':
-      case 'New document uploaded':
+      case 'account_deletion_requested':
+      case 'document_uploaded':
         _goAdmin(tab: 2, driversSub: 0);
-      case 'Job accepted':
-      case 'Driver arrived at pickup':
+      case 'job_accepted':
+      case 'driver_arrived':
         _goAdmin(tab: 1, jobsSub: 3);
-      case 'Job released back to open':
+      case 'job_released':
         _goAdmin(tab: 1, jobsSub: 2);
-      case 'Job completed':
+      case 'job_completed':
         _goAdmin(tab: 1, jobsSub: 4);
-      case 'Cancellation request':
+      case 'cancellation_requested':
         _goAdmin(tab: 1, jobsSub: 5);
     }
   }

@@ -31,6 +31,23 @@ class DashboardScreen extends ConsumerWidget {
         data: (analytics) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // Confirmed 25 Aug (docs/BACKEND_REQUESTS.md item 8): GET
+            // /admin/analytics deliberately excludes demo_admin/demo_driver
+            // activity from every total below, unlike the Jobs/Payments
+            // screens these cards link into — so the numbers here can look
+            // "wrong" next to those screens during demo/reviewer account
+            // use. Decided (Option C): keep both scopes as-is, just label
+            // this one rather than hide or unify them.
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                'Excludes demo/reviewer account activity',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.outline),
+              ),
+            ),
             _StatCard(
               label: 'Total jobs',
               value: '${analytics.totalJobs}',

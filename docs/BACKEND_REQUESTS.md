@@ -2,7 +2,7 @@
 
 Everything below is needed to finish the feature list requested on this date. Each item says what's missing, why, and a suggested shape — the backend session should treat the suggested shape as a starting point, not a spec set in stone. Client-side work that depends on each item is noted so priority can be judged.
 
-**Status, 25 Aug 2026: all 6 items delivered and live, client-side wiring done and live-verified — see the "Delivered" / "Client impact" note on each item below. The two follow-up bugs (item 5's `penalize: false`, and the review-note field-name mismatch) are now fixed and re-verified live; item 4's phone-number gap is also fixed. Item 7 (`POST /push-tokens` 403 for admins) is confirmed fixed by the backend session. Two new items below: item 8 (a real inconsistency, not a bug, that needs a product decision) and item 9 (a client ask to make push notification tap-routing reliable).**
+**Status, 25 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text.
 
 ## 1. Prevent a driver from holding more than one active job at once
 
@@ -102,7 +102,9 @@ Net effect: any demo-account job (which happens constantly during QA testing wit
 
 Given demo_admin/demo_driver are real, ongoing App Store/Play Store reviewer accounts (not just internal test data), Option C is the safest change — smallest blast radius, no risk of leaking demo activity into anything, and no behavior change. Flagging this as a decision rather than picking one myself.
 
-**Client impact:** none needed for A or C. Option B would need a small client filter change once you confirm the client can identify demo accounts from data it already has.
+**Decided 25 Aug: Option C.** No backend change — both scopes stay exactly as they are (Analytics/TfL export excludes demo accounts, Payments/Jobs doesn't).
+
+**Client impact:** done — added an "Excludes demo/reviewer account activity" caption above the dashboard's stat cards so the scope difference reads as intentional.
 
 ## 9. Push notification payload needs a stable routing key
 
@@ -110,7 +112,9 @@ Given demo_admin/demo_driver are real, ongoing App Store/Play Store reviewer acc
 
 **Needed:** add a small `data` payload alongside the existing `notification` block — even just `{"type": "job_completed", "job_id": "...", "driver_id": "..."}` (or similar, whatever's easiest given payload code that already exists per notification type) would let routing key off a stable code instead of English text, and open the door to deep-linking straight to the specific job/driver instead of just the containing tab.
 
-**Client impact:** once `data` exists, I'll switch the routing logic in `push_notification_service.dart` from title-matching to reading `data['type']` (and navigate to the specific record where an id is present, not just the tab).
+**Delivered 25 Aug** — every push now carries `data.type` plus whichever ids apply (job_id/driver_id/document_id/payment_id/request_id, all strings, omitted rather than `"null"` when not relevant), covering all 20 triggers across every route file. Verified both structurally (a direct Firebase Admin SDK call) and end-to-end (a real admin device token registered, a job-accept triggered, delivery confirmed, cleaned up).
+
+**Client impact:** done — `push_notification_service.dart` now routes on `data['type']` (a fixed switch over the "To admins" type codes) instead of matching title text. Deep-linking to the *specific* record (not just the containing tab) isn't built yet — no screen currently supports opening a job/driver detail by id from outside its list — but the ids are already flowing through so that's addable later without another backend round-trip.
 
 ---
 
