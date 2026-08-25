@@ -24,14 +24,19 @@ final driverMeProvider = FutureProvider.autoDispose<Driver>((ref) {
   return ref.watch(driverRepositoryProvider).fetchMe();
 });
 
-/// The driver's current in-progress job (accepted or arrived, not yet
-/// completed) if any. `/jobs/mine` isn't documented as filterable by status,
-/// so this filters client-side — flag to the backend session if a dedicated
-/// "current job" endpoint would be cheaper.
+/// Every status between accepting a job and completing it — matches the
+/// backend's strict sequence (accepted → en_route → arrived →
+/// passenger_on_board → completed, confirmed live 26 Aug).
+const activeJobStatuses = {'accepted', 'en_route', 'arrived', 'passenger_on_board'};
+
+/// The driver's current in-progress job, if any. `/jobs/mine` isn't
+/// documented as filterable by status, so this filters client-side — flag to
+/// the backend session if a dedicated "current job" endpoint would be
+/// cheaper.
 final activeJobProvider = FutureProvider.autoDispose<Job?>((ref) async {
   final jobs = await ref.watch(myJobsProvider.future);
   for (final job in jobs) {
-    if (job.status == 'accepted' || job.status == 'arrived') {
+    if (activeJobStatuses.contains(job.status)) {
       return job;
     }
   }

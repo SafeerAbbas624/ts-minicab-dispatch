@@ -133,7 +133,9 @@ class PushNotificationService {
       case 'document_uploaded':
         _goAdmin(tab: 2, driversSub: 0);
       case 'job_accepted':
+      case 'job_started':
       case 'driver_arrived':
+      case 'passenger_on_board':
         _goAdmin(tab: 1, jobsSub: 3);
       case 'job_released':
         _goAdmin(tab: 1, jobsSub: 2);

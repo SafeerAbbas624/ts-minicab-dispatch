@@ -25,30 +25,17 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
     ref.invalidate(openJobsProvider);
   }
 
-  Future<void> _markArrived() async {
+  /// One call handles all four steps — same endpoint, just a different
+  /// status string each time (confirmed live 26 Aug: strict sequence,
+  /// 409s if called out of order, so there's no risk of this skipping a
+  /// step even if tapped twice quickly).
+  Future<void> _advanceTo(String status, {String? successMessage}) async {
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(driverRepositoryProvider).updateJobStatus(widget.job.id, status: 'arrived');
+      await ref.read(driverRepositoryProvider).updateJobStatus(widget.job.id, status: status);
       _refreshJobState();
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
-  Future<void> _markCompleted() async {
-    setState(() => _isSubmitting = true);
-    try {
-      await ref
-          .read(driverRepositoryProvider)
-          .updateJobStatus(widget.job.id, status: 'completed');
-      _refreshJobState();
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Trip completed')));
+      if (mounted && successMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMessage)));
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -159,11 +146,40 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
     );
   }
 
+  static const _statusLabels = {
+    'accepted': 'Accepted — ready to start',
+    'en_route': 'En route to pickup',
+    'arrived': 'Arrived at pickup',
+    'passenger_on_board': 'Passenger on board',
+  };
+
+  String _stepLabel(String status) => _statusLabels[status] ?? status;
+
+  static const List<(String, String, IconData, String, String?)> _steps = [
+    ('accepted', 'Start Job', Icons.play_circle_outline, 'en_route', null),
+    ('en_route', 'Arrived to Pickup', Icons.pin_drop, 'arrived', null),
+    ('arrived', 'Passenger On Board', Icons.person, 'passenger_on_board', null),
+    (
+      'passenger_on_board',
+      'Clear / Done',
+      Icons.check_circle,
+      'completed',
+      'Trip completed',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final job = widget.job;
-    final hasArrived = job.status == 'arrived';
     final pendingCancellation = job.hasPendingCancellation;
+    (String, String, IconData, String, String?)? matchedStep;
+    for (final s in _steps) {
+      if (s.$1 == job.status) {
+        matchedStep = s;
+        break;
+      }
+    }
+    final step = matchedStep;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -197,6 +213,14 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Active Job', style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 4),
+                Text(
+                  _stepLabel(job.status),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Theme.of(context).colorScheme.outline),
+                ),
                 const SizedBox(height: 8),
                 Text(formatDateTime(job.pickupDatetime)),
                 const SizedBox(height: 4),
@@ -214,23 +238,17 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
           ),
         ),
         const SizedBox(height: 24),
-        // Full requested flow is Start Job / Arrived to Pickup / Passenger
-        // On Board / Clear-Done — the middle two steps map onto the
-        // existing accepted/arrived/completed statuses, but "Start Job" and
-        // "Passenger On Board" need a real status the backend can persist
-        // and notify on first (see docs/BACKEND_REQUESTS.md item 10) before
-        // they can be real buttons here rather than no-ops.
-        if (!hasArrived)
+        // Start Job -> Arrived to Pickup -> Passenger On Board -> Clear/Done,
+        // one button visible at a time for whichever step comes next.
+        // Confirmed live 26 Aug: strict server-side sequence, matches _steps
+        // above exactly.
+        if (step != null)
           FilledButton.icon(
-            onPressed: _isSubmitting || pendingCancellation ? null : _markArrived,
-            icon: const Icon(Icons.pin_drop),
-            label: const Text('Arrived to Pickup'),
-          ),
-        if (hasArrived)
-          FilledButton.icon(
-            onPressed: _isSubmitting || pendingCancellation ? null : _markCompleted,
-            icon: const Icon(Icons.check_circle),
-            label: const Text('Clear / Done'),
+            onPressed: _isSubmitting || pendingCancellation
+                ? null
+                : () => _advanceTo(step.$4, successMessage: step.$5),
+            icon: Icon(step.$3),
+            label: Text(step.$2),
           ),
         const SizedBox(height: 12),
         OutlinedButton(

@@ -9,12 +9,16 @@ import '../data/admin_repository.dart';
 import 'widgets/driver_picker_dialog.dart';
 import 'widgets/job_detail_dialog.dart';
 
-const _acceptedStatuses = {'accepted', 'arrived'};
+// Widened 26 Aug to include the two new mid-trip statuses (confirmed live:
+// accepted -> en_route -> arrived -> passenger_on_board -> completed) — all
+// four are "driver has it, trip in progress" states shown together here.
+const _acceptedStatuses = {'accepted', 'en_route', 'arrived', 'passenger_on_board'};
 
-/// Jobs a driver already has — accepted or arrived (en route to/at pickup).
-/// Split out from the old combined Active Jobs tab so "needs a driver" and
-/// "already has one" aren't mixed in the same list. Reassign only makes
-/// sense here — an open job has no driver to unassign.
+/// Jobs a driver already has, anywhere from accepted through passenger
+/// on board — not yet completed. Split out from the old combined Active
+/// Jobs tab so "needs a driver" and "already has one" aren't mixed in the
+/// same list. Reassign only makes sense here — an open job has no driver to
+/// unassign.
 class AcceptedJobsScreen extends ConsumerWidget {
   const AcceptedJobsScreen({super.key});
 
