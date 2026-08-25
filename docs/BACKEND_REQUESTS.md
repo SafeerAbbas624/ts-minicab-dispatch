@@ -2,7 +2,7 @@
 
 Everything below is needed to finish the feature list requested on this date. Each item says what's missing, why, and a suggested shape — the backend session should treat the suggested shape as a starting point, not a spec set in stone. Client-side work that depends on each item is noted so priority can be judged.
 
-**Status, 25 Aug 2026: all 6 items delivered and live, client-side wiring done and live-verified — see the "Delivered" / "Client impact" note on each item below. The two follow-up bugs (item 5's `penalize: false`, and the review-note field-name mismatch) are now fixed and re-verified live; item 4's phone-number gap is also fixed. One new item found and open: item 7, `POST /push-tokens` rejects admin accounts with 403.**
+**Status, 25 Aug 2026: all 6 items delivered and live, client-side wiring done and live-verified — see the "Delivered" / "Client impact" note on each item below. The two follow-up bugs (item 5's `penalize: false`, and the review-note field-name mismatch) are now fixed and re-verified live; item 4's phone-number gap is also fixed. Item 7 (`POST /push-tokens` 403 for admins) is confirmed fixed by the backend session. Two new items below: item 8 (a real inconsistency, not a bug, that needs a product decision) and item 9 (a client ask to make push notification tap-routing reliable).**
 
 ## 1. Prevent a driver from holding more than one active job at once
 
@@ -82,6 +82,35 @@ The new admin job-detail popup shows current status, but not a timeline of what'
 **Needed:** whatever permission check is rejecting admin/super_admin/demo_admin roles on this route needs removing — the client already calls it correctly (confirmed matching the documented `{"device_token", "platform"}` shape) and doesn't need any change once this is fixed.
 
 **Client impact:** none needed — already wired up and calling correctly; this is purely a server-side fix.
+
+**Update 25 Aug:** confirmed fixed by the backend session (root cause was `/push-tokens` living inside `jobsRouter`, gated `requireRole('driver', 'demo_driver')` — moved to its own router gated only by `requireAuth`). Not yet re-verified independently on this side, but no client change needed either way.
+
+## 8. Dashboard analytics vs. Payments/Jobs screens show different scopes of data — needs a product decision, not a bug fix
+
+**Found while investigating a reported discrepancy** ("Outstanding unpaid" showing £0.00 on the dashboard while the Payments screen's Unpaid tab shows real unpaid jobs). Root-caused via live testing, not a guess:
+
+- `GET /admin/analytics` excludes demo-account activity (`demo_admin`/`demo_driver`) from every total — confirmed by creating jobs/payments as demo_driver and watching `total_jobs`, `completed_jobs`, `total_revenue_paid` all stay unaffected. This looks intentional (keeps demo/reviewer activity out of real business metrics) and is documented as such in an earlier round.
+- `GET /admin/payments` and `GET /admin/jobs` do **not** exclude demo accounts — they return everything, demo or real.
+- The client's Payments > Unpaid tab is derived from `GET /admin/jobs?status=completed` (see the comment in `payment_list_screen.dart` — the backend only ever creates a Payment row at the moment something's marked paid, never on completion, so `?status=unpaid` is structurally always empty and unusable for this).
+
+Net effect: any demo-account job (which happens constantly during QA testing with demo_admin/demo_driver) shows up in Payments/Jobs but is invisible on the Dashboard — not a data-loss bug, just two screens with inconsistent scope. Reproduced concretely: completed 2 demo_driver jobs (fares £44 and £33, neither paid) — Payments > Unpaid showed them correctly, Dashboard's Outstanding unpaid stayed £0.00 throughout.
+
+**Needed — your call, not something to fix blind:**
+- Option A: make `GET /admin/payments` and `GET /admin/jobs` exclude demo accounts too, matching Analytics, so every admin screen agrees. Downside: demo/QA activity becomes invisible everywhere, not just on the dashboard.
+- Option B: leave the backend as-is (demo accounts stay useful for QA) and the client-side Payments/Jobs screens filter demo accounts out to match Analytics' scope — doable purely client-side once the backend can flag which accounts are demo (a `role` field is already in the driver list, so this might not even need a backend change — worth confirming account roles are present everywhere the client would need to filter on).
+- Option C: leave both as-is and just label the scope difference clearly in the UI (e.g. "excludes demo accounts" caption on the dashboard cards) so it reads as intentional rather than broken.
+
+Given demo_admin/demo_driver are real, ongoing App Store/Play Store reviewer accounts (not just internal test data), Option C is the safest change — smallest blast radius, no risk of leaking demo activity into anything, and no behavior change. Flagging this as a decision rather than picking one myself.
+
+**Client impact:** none needed for A or C. Option B would need a small client filter change once you confirm the client can identify demo accounts from data it already has.
+
+## 9. Push notification payload needs a stable routing key
+
+**Context:** built the client's foreground-notification display and tap-to-navigate handling this round (Android didn't show anything at all while the app was open — flutter_local_notifications is now wired in for that). Tap-routing on the admin side jumps to the right tab, but per the Push notifications reference section, the payload is a plain `{notification: {title, body}}` with no custom data — so routing has to match on the literal title string (e.g. `"Job completed"` → Jobs > Completed tab). This is fragile: any future wording change to a notification title silently breaks its routing with no error, and there's no way to route to a *specific* job/driver, only a tab.
+
+**Needed:** add a small `data` payload alongside the existing `notification` block — even just `{"type": "job_completed", "job_id": "...", "driver_id": "..."}` (or similar, whatever's easiest given payload code that already exists per notification type) would let routing key off a stable code instead of English text, and open the door to deep-linking straight to the specific job/driver instead of just the containing tab.
+
+**Client impact:** once `data` exists, I'll switch the routing logic in `push_notification_service.dart` from title-matching to reading `data['type']` (and navigate to the specific record where an id is present, not just the tab).
 
 ---
 
