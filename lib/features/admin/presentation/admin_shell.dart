@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/responsive_nav_scaffold.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/admin_providers.dart';
 import 'action_log_screen.dart';
@@ -49,73 +50,92 @@ class AdminShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isSuperAdmin = ref.watch(authControllerProvider).role?.isSuperAdmin ?? false;
     final index = ref.watch(adminTabIndexProvider);
+    // On desktop/web widths the drawer becomes a permanent sidebar instead
+    // of a hamburger-triggered overlay, so it stops looking like a phone app
+    // stretched into a browser — matches ResponsiveNavScaffold's breakpoint
+    // used by the sub-tab shells nested inside each of these screens.
+    final isDesktop = MediaQuery.sizeOf(context).width >= ResponsiveNavScaffold.desktopBreakpoint;
 
     void select(int i) {
       ref.read(adminTabIndexProvider.notifier).state = i;
-      Navigator.of(context).pop();
+      if (!isDesktop) Navigator.of(context).pop();
     }
+
+    void closeDrawerThenPush(Widget screen) {
+      if (!isDesktop) Navigator.of(context).pop();
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+    }
+
+    final sidebar = SafeArea(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const DrawerHeader(
+            decoration: BoxDecoration(color: Colors.white),
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Image(
+                    image: AssetImage('assets/branding/logo.png'),
+                    height: 56,
+                    fit: BoxFit.contain,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Admin panel',
+                    style: TextStyle(color: Color(0xFF0B5FFF), fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          for (var i = 0; i < _titles.length; i++)
+            ListTile(
+              leading: Icon(_icons[i]),
+              title: Text(_titles[i]),
+              selected: i == index,
+              onTap: () => select(i),
+            ),
+          if (isSuperAdmin)
+            ListTile(
+              leading: const Icon(Icons.admin_panel_settings_outlined),
+              title: const Text('Create Admin'),
+              onTap: () => closeDrawerThenPush(const CreateAdminScreen()),
+            ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () {
+              if (!isDesktop) Navigator.of(context).pop();
+              ref.read(authControllerProvider.notifier).logout();
+            },
+          ),
+        ],
+      ),
+    );
+
+    final content = ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: isDesktop ? 1100 : double.infinity),
+      child: IndexedStack(index: index, children: _screens),
+    );
+    final body = isDesktop ? Align(alignment: Alignment.topCenter, child: content) : content;
 
     return Scaffold(
       appBar: AppBar(title: Text(_titles[index])),
-      drawer: Drawer(
-        child: SafeArea(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              const DrawerHeader(
-                decoration: BoxDecoration(color: Colors.white),
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Image(
-                        image: AssetImage('assets/branding/logo.png'),
-                        height: 56,
-                        fit: BoxFit.contain,
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Admin panel',
-                        style: TextStyle(color: Color(0xFF0B5FFF), fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              for (var i = 0; i < _titles.length; i++)
-                ListTile(
-                  leading: Icon(_icons[i]),
-                  title: Text(_titles[i]),
-                  selected: i == index,
-                  onTap: () => select(i),
-                ),
-              if (isSuperAdmin)
-                ListTile(
-                  leading: const Icon(Icons.admin_panel_settings_outlined),
-                  title: const Text('Create Admin'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const CreateAdminScreen()),
-                    );
-                  },
-                ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.logout),
-                title: const Text('Logout'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  ref.read(authControllerProvider.notifier).logout();
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-      body: IndexedStack(index: index, children: _screens),
+      drawer: isDesktop ? null : Drawer(child: sidebar),
+      body: isDesktop
+          ? Row(
+              children: [
+                SizedBox(width: 260, child: Material(elevation: 1, child: sidebar)),
+                const VerticalDivider(width: 1),
+                Expanded(child: body),
+              ],
+            )
+          : body,
     );
   }
 }

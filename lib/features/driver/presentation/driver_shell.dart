@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/responsive_nav_scaffold.dart';
 import '../application/driver_providers.dart';
 import 'earnings_screen.dart';
 import 'job_history_screen.dart';
@@ -31,16 +32,16 @@ class DriverShell extends ConsumerWidget {
     final index = ref.watch(driverTabIndexProvider);
     return Scaffold(
       appBar: AppBar(title: Text(_titles[index])),
-      body: IndexedStack(index: index, children: _tabs),
-      bottomNavigationBar: NavigationBar(
+      body: ResponsiveNavScaffold(
         selectedIndex: index,
-        onDestinationSelected: (i) => ref.read(driverTabIndexProvider.notifier).state = i,
+        onSelect: (i) => ref.read(driverTabIndexProvider.notifier).state = i,
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.work_outline), label: 'Jobs'),
-          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
-          NavigationDestination(icon: Icon(Icons.payments_outlined), label: 'Earnings'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+          NavItem(icon: Icons.work_outline, label: 'Jobs'),
+          NavItem(icon: Icons.history, label: 'History'),
+          NavItem(icon: Icons.payments_outlined, label: 'Earnings'),
+          NavItem(icon: Icons.settings_outlined, label: 'Settings'),
         ],
+        body: IndexedStack(index: index, children: _tabs),
       ),
     );
   }

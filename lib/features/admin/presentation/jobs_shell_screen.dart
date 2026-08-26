@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/responsive_nav_scaffold.dart';
 import '../application/admin_providers.dart';
 import 'accepted_jobs_screen.dart';
 import 'cancellation_requests_screen.dart';
@@ -35,40 +36,26 @@ class JobsShellScreen extends ConsumerWidget {
     // while the Post a Job screen itself is showing (index 0), where no nav
     // destination truly applies.
     final navSelectedIndex = (index - 1).clamp(0, 4);
-    return Stack(
-      children: [
-        Column(
-          children: [
-            Expanded(child: IndexedStack(index: index, children: _tabs)),
-            NavigationBar(
-              selectedIndex: navSelectedIndex,
-              onDestinationSelected: (i) =>
-                  ref.read(jobsSubTabIndexProvider.notifier).state = i + 1,
-              destinations: const [
-                // "Website"/"Active" rather than "Website Jobs"/"Active
-                // Jobs" — with 5 destinations the full labels wrapped and
-                // overlapped the next item on narrow phones. Every label on
-                // this bar reads fine without "Jobs" since the tab is
-                // already titled "Jobs".
-                NavigationDestination(icon: Icon(Icons.language), label: 'Website'),
-                NavigationDestination(icon: Icon(Icons.local_taxi_outlined), label: 'Active'),
-                NavigationDestination(icon: Icon(Icons.badge_outlined), label: 'Accepted'),
-                NavigationDestination(icon: Icon(Icons.task_alt), label: 'Completed'),
-                NavigationDestination(icon: Icon(Icons.report_gmailerrorred), label: 'Cancellations'),
-              ],
-            ),
-          ],
-        ),
-        Positioned(
-          right: 16,
-          bottom: 110,
-          child: FloatingActionButton.extended(
-            onPressed: () => ref.read(jobsSubTabIndexProvider.notifier).state = 0,
-            icon: const Icon(Icons.add_road),
-            label: const Text('Post Job'),
-          ),
-        ),
+    return ResponsiveNavScaffold(
+      selectedIndex: navSelectedIndex,
+      onSelect: (i) => ref.read(jobsSubTabIndexProvider.notifier).state = i + 1,
+      destinations: const [
+        // "Website"/"Active" rather than "Website Jobs"/"Active Jobs" — with
+        // 5 destinations the full labels wrapped and overlapped the next
+        // item on narrow phones. Every label reads fine without "Jobs" since
+        // the tab is already titled "Jobs".
+        NavItem(icon: Icons.language, label: 'Website'),
+        NavItem(icon: Icons.local_taxi_outlined, label: 'Active'),
+        NavItem(icon: Icons.badge_outlined, label: 'Accepted'),
+        NavItem(icon: Icons.task_alt, label: 'Completed'),
+        NavItem(icon: Icons.report_gmailerrorred, label: 'Cancellations'),
       ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => ref.read(jobsSubTabIndexProvider.notifier).state = 0,
+        icon: const Icon(Icons.add_road),
+        label: const Text('Post Job'),
+      ),
+      body: IndexedStack(index: index, children: _tabs),
     );
   }
 }
