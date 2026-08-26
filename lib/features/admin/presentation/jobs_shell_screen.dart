@@ -55,6 +55,11 @@ class JobsShellScreen extends ConsumerWidget {
         NavItem(icon: Icons.report_gmailerrorred, label: 'Cancellations'),
       ],
       floatingActionButton: FloatingActionButton.extended(
+        // admin_shell.dart keeps every top-level screen mounted at once via
+        // IndexedStack, so this FAB coexists in the tree with TflExportScreen's —
+        // without a unique tag both fall back to Flutter's shared default
+        // FloatingActionButton hero tag and collide.
+        heroTag: 'jobsShellPostJobFab',
         onPressed: () => ref.read(jobsSubTabIndexProvider.notifier).state = 0,
         icon: const Icon(Icons.add_road),
         label: const Text('Post Job'),

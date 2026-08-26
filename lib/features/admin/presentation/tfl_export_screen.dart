@@ -104,6 +104,11 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
           right: 16,
           bottom: 16,
           child: FloatingActionButton.extended(
+            // admin_shell.dart keeps every top-level screen mounted at once via
+            // IndexedStack, so this FAB coexists in the tree with
+            // JobsShellScreen's — without a unique tag both fall back to
+            // Flutter's shared default FloatingActionButton hero tag and collide.
+            heroTag: 'tflExportDownloadFab',
             onPressed: _isExporting ? null : _downloadCsv,
             icon: _isExporting
                 ? const SizedBox(
