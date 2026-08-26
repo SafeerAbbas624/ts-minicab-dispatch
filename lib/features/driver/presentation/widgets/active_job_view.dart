@@ -243,17 +243,23 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
         // Confirmed live 26 Aug: strict server-side sequence, matches _steps
         // above exactly.
         if (step != null)
-          FilledButton.icon(
-            onPressed: _isSubmitting || pendingCancellation
-                ? null
-                : () => _advanceTo(step.$4, successMessage: step.$5),
-            icon: Icon(step.$3),
-            label: Text(step.$2),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _isSubmitting || pendingCancellation
+                  ? null
+                  : () => _advanceTo(step.$4, successMessage: step.$5),
+              icon: Icon(step.$3),
+              label: Text(step.$2),
+            ),
           ),
         const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: _isSubmitting || pendingCancellation ? null : _cantComplete,
-          child: const Text("Can't complete"),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: _isSubmitting || pendingCancellation ? null : _cantComplete,
+            child: const Text("Can't complete"),
+          ),
         ),
       ],
     );

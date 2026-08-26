@@ -82,15 +82,18 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
             if (job.notes != null && job.notes!.isNotEmpty)
               _DetailRow(label: 'Notes', value: job.notes!),
             const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _isAccepting ? null : _accept,
-              child: _isAccepting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Accept Job'),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _isAccepting ? null : _accept,
+                child: _isAccepting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Accept Job'),
+              ),
             ),
           ],
         ),

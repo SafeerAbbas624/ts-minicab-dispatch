@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
 import '../application/driver_providers.dart';
 import 'job_detail_screen.dart';
 import 'widgets/active_job_view.dart';
 import 'widgets/job_card.dart';
+import 'widgets/job_day_grouping.dart';
 import 'widgets/pending_approval_view.dart';
 
 class JobsTabScreen extends ConsumerWidget {
@@ -61,44 +63,89 @@ class _OpenJobsList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final openJobsAsync = ref.watch(openJobsProvider);
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(openJobsProvider);
-        await ref.read(openJobsProvider.future);
+    Future<void> refresh() async {
+      ref.invalidate(openJobsProvider);
+      await ref.read(openJobsProvider.future);
+    }
+
+    return openJobsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => _ErrorView(
+        message: error.toString(),
+        onRetry: () => ref.invalidate(openJobsProvider),
+      ),
+      data: (jobs) {
+        final groups = groupJobsByDay(jobs, DateTime.now());
+        return DefaultTabController(
+          length: 3,
+          child: Column(
+            children: [
+              TabBar(
+                tabs: [
+                  const Tab(text: 'Today'),
+                  Tab(text: groups.nextLabel ?? 'Upcoming'),
+                  Tab(text: groups.laterLabel ?? 'Later'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _DayJobsList(jobs: groups.today, emptyMessage: 'No jobs today', onRefresh: refresh),
+                    _DayJobsList(
+                      jobs: groups.next,
+                      emptyMessage: 'No jobs lined up yet',
+                      onRefresh: refresh,
+                    ),
+                    _DayJobsList(
+                      jobs: groups.later,
+                      emptyMessage: 'Nothing further out yet',
+                      onRefresh: refresh,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
       },
-      child: openJobsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => _ErrorView(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(openJobsProvider),
-        ),
-        data: (jobs) {
-          if (jobs.isEmpty) {
-            return LayoutBuilder(
+    );
+  }
+}
+
+class _DayJobsList extends StatelessWidget {
+  const _DayJobsList({required this.jobs, required this.emptyMessage, required this.onRefresh});
+
+  final List<Job> jobs;
+  final String emptyMessage;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: jobs.isEmpty
+          ? LayoutBuilder(
               builder: (context, constraints) => SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: SizedBox(
                   height: constraints.maxHeight,
-                  child: const Center(child: Text('No open jobs right now')),
+                  child: Center(child: Text(emptyMessage)),
                 ),
               ),
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: jobs.length,
-            itemBuilder: (context, index) {
-              final job = jobs[index];
-              return JobCard(
-                job: job,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => JobDetailScreen(job: job)),
-                ),
-              );
-            },
-          );
-        },
-      ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: jobs.length,
+              itemBuilder: (context, index) {
+                final job = jobs[index];
+                return JobCard(
+                  job: job,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => JobDetailScreen(job: job)),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
