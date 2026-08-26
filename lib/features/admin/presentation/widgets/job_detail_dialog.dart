@@ -7,9 +7,8 @@ import '../../application/admin_providers.dart';
 
 /// Full detail popup for a job — used from every admin job list so every
 /// card is tappable, not just the ones with an explicit action button.
-/// When [job] has an assigned driver, fetches and shows that driver's
-/// contact info too (the job payload itself only ever carries the driver's
-/// id, never a name).
+/// Thin wrapper around [JobDetailView]; desktop list screens embed that
+/// same view directly in a side pane instead of popping a dialog.
 Future<void> showJobDetailDialog(BuildContext context, Job job) {
   return showDialog(
     context: context,
@@ -23,37 +22,7 @@ Future<void> showJobDetailDialog(BuildContext context, Job job) {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Job details', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 16),
-                _Row('Status', job.status),
-                _Row('Pickup', formatDateTime(job.pickupDatetime)),
-                _Row('From', job.pickupLocation),
-                _Row('To', job.dropoffLocation),
-                _Row('Customer', job.customerName),
-                _Row('Contact', job.customerContact),
-                _Row('Fare', formatCurrency(job.fare)),
-                if (job.source != null) _Row('Source', job.source!),
-                if (job.notes != null && job.notes!.isNotEmpty) _Row('Notes', job.notes!),
-                if (job.payment != null)
-                  _Row('Payment', job.payment!.isPaid ? 'Paid' : 'Unpaid to driver'),
-                if (job.acceptedByDriverId != null) ...[
-                  const Divider(height: 32),
-                  Text('Driver', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  _DriverInfo(driverId: job.acceptedByDriverId!),
-                ],
-                if (job.hasPendingCancellation) ...[
-                  const Divider(height: 32),
-                  Text('Cancellation request', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  ...job.cancellationRequests
-                      .where((r) => r.status == 'pending')
-                      .map((r) => _Row('Reason', r.reason)),
-                ],
-                const Divider(height: 32),
-                Text('History', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                _JobHistory(jobId: job.id),
+                JobDetailView(job: job),
                 const SizedBox(height: 16),
                 Align(
                   alignment: Alignment.centerRight,
@@ -69,6 +38,57 @@ Future<void> showJobDetailDialog(BuildContext context, Job job) {
       ),
     ),
   );
+}
+
+/// When [job] has an assigned driver, fetches and shows that driver's
+/// contact info too (the job payload itself only ever carries the driver's
+/// id, never a name). No dialog/scaffold chrome of its own — usable inside a
+/// [Dialog] (see [showJobDetailDialog]) or inline in a desktop master-detail
+/// pane.
+class JobDetailView extends StatelessWidget {
+  const JobDetailView({super.key, required this.job});
+
+  final Job job;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Job details', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16),
+        _Row('Status', job.status),
+        _Row('Pickup', formatDateTime(job.pickupDatetime)),
+        _Row('From', job.pickupLocation),
+        _Row('To', job.dropoffLocation),
+        _Row('Customer', job.customerName),
+        _Row('Contact', job.customerContact),
+        _Row('Fare', formatCurrency(job.fare)),
+        if (job.source != null) _Row('Source', job.source!),
+        if (job.notes != null && job.notes!.isNotEmpty) _Row('Notes', job.notes!),
+        if (job.payment != null) _Row('Payment', job.payment!.isPaid ? 'Paid' : 'Unpaid to driver'),
+        if (job.acceptedByDriverId != null) ...[
+          const Divider(height: 32),
+          Text('Driver', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          _DriverInfo(driverId: job.acceptedByDriverId!),
+        ],
+        if (job.hasPendingCancellation) ...[
+          const Divider(height: 32),
+          Text('Cancellation request', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          ...job.cancellationRequests
+              .where((r) => r.status == 'pending')
+              .map((r) => _Row('Reason', r.reason)),
+        ],
+        const Divider(height: 32),
+        Text('History', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        _JobHistory(jobId: job.id),
+      ],
+    );
+  }
 }
 
 class _DriverInfo extends ConsumerWidget {

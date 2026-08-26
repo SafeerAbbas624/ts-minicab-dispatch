@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/models/job.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/responsive_master_detail_list.dart';
 import '../application/admin_providers.dart';
 import 'widgets/job_detail_dialog.dart';
 
@@ -23,7 +25,7 @@ class CompletedJobsScreen extends ConsumerWidget {
         if (jobs.isEmpty) {
           return const Center(child: Text('No completed jobs yet'));
         }
-        return RefreshIndicator(
+        final mobileList = RefreshIndicator(
           onRefresh: () async => ref.invalidate(adminJobsProvider('completed')),
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -37,18 +39,48 @@ class CompletedJobsScreen extends ConsumerWidget {
                   title: Text(formatDateTime(job.pickupDatetime)),
                   subtitle:
                       Text('${job.customerName} · ${job.pickupLocation} → ${job.dropoffLocation}'),
-                  trailing: Chip(
-                    label: Text(isPaid ? 'Paid' : 'Unpaid'),
-                    backgroundColor:
-                        (isPaid ? Colors.green : Colors.orange).withValues(alpha: 0.15),
-                    side: BorderSide(color: isPaid ? Colors.green : Colors.orange),
-                  ),
+                  trailing: _PaidChip(isPaid: isPaid),
                 ),
               );
             },
           ),
         );
+        return ResponsiveMasterDetailList<Job>(
+          items: jobs,
+          itemKey: (job) => job.id,
+          mobileList: mobileList,
+          detailFor: (job) => JobDetailView(job: job),
+          columns: const [
+            DataColumn(label: Text('Pickup')),
+            DataColumn(label: Text('Route')),
+            DataColumn(label: Text('Customer')),
+            DataColumn(label: Text('Fare')),
+            DataColumn(label: Text('Payment')),
+          ],
+          cellsFor: (job) => [
+            DataCell(Text(formatDateTime(job.pickupDatetime))),
+            DataCell(Text('${job.pickupLocation} → ${job.dropoffLocation}')),
+            DataCell(Text(job.customerName)),
+            DataCell(Text(formatCurrency(job.fare))),
+            DataCell(_PaidChip(isPaid: job.payment?.isPaid ?? false)),
+          ],
+        );
       },
+    );
+  }
+}
+
+class _PaidChip extends StatelessWidget {
+  const _PaidChip({required this.isPaid});
+
+  final bool isPaid;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      label: Text(isPaid ? 'Paid' : 'Unpaid'),
+      backgroundColor: (isPaid ? Colors.green : Colors.orange).withValues(alpha: 0.15),
+      side: BorderSide(color: isPaid ? Colors.green : Colors.orange),
     );
   }
 }

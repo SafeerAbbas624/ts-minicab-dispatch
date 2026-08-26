@@ -17,6 +17,7 @@ class PaymentsShellScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final index = ref.watch(paymentsSubTabIndexProvider);
     return ResponsiveNavScaffold(
+      maxContentWidth: 1600,
       selectedIndex: index,
       onSelect: (i) => ref.read(paymentsSubTabIndexProvider.notifier).state = i,
       destinations: const [

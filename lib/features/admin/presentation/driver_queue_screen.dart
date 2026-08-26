@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/admin_models.dart';
+import '../../../core/widgets/responsive_master_detail_list.dart';
 import '../application/admin_providers.dart';
 import 'driver_detail_screen.dart';
 
@@ -28,12 +29,37 @@ class DriverQueueScreen extends ConsumerWidget {
         if (drivers.isEmpty) {
           return const Center(child: Text('No drivers in this state'));
         }
-        return RefreshIndicator(
+        final mobileList = RefreshIndicator(
           onRefresh: () async => ref.invalidate(adminDriversProvider(status)),
           child: ListView.builder(
             itemCount: drivers.length,
             itemBuilder: (context, index) => _DriverTile(driver: drivers[index]),
           ),
+        );
+        return ResponsiveMasterDetailList<AdminDriverSummary>(
+          items: drivers,
+          itemKey: (d) => d.id,
+          mobileList: mobileList,
+          detailFor: (d) => DriverDetailView(driverId: d.id),
+          columns: const [
+            DataColumn(label: Text('Name')),
+            DataColumn(label: Text('Email')),
+            DataColumn(label: Text('Status')),
+          ],
+          cellsFor: (d) => [
+            DataCell(Text(d.fullName)),
+            DataCell(Text(d.email)),
+            DataCell(Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (d.accountStatus == 'suspended') ...[
+                  const _StatusBadge(status: 'suspended'),
+                  const SizedBox(width: 4),
+                ],
+                _StatusBadge(status: d.status),
+              ],
+            )),
+          ],
         );
       },
     );

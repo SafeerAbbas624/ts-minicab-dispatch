@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/responsive_master_detail_list.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 import 'widgets/driver_picker_dialog.dart';
@@ -34,7 +35,7 @@ class AcceptedJobsScreen extends ConsumerWidget {
         if (jobs.isEmpty) {
           return const Center(child: Text('No accepted jobs'));
         }
-        return RefreshIndicator(
+        final mobileList = RefreshIndicator(
           onRefresh: () async => ref.invalidate(adminJobsProvider(null)),
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -42,21 +43,93 @@ class AcceptedJobsScreen extends ConsumerWidget {
             itemBuilder: (context, index) => _JobRow(job: jobs[index]),
           ),
         );
+        return ResponsiveMasterDetailList<Job>(
+          items: jobs,
+          itemKey: (job) => job.id,
+          mobileList: mobileList,
+          detailFor: (job) => JobDetailView(job: job),
+          columns: const [
+            DataColumn(label: Text('Pickup')),
+            DataColumn(label: Text('Route')),
+            DataColumn(label: Text('Customer')),
+            DataColumn(label: Text('Status')),
+            DataColumn(label: Text('Actions')),
+          ],
+          cellsFor: (job) => [
+            DataCell(Text(formatDateTime(job.pickupDatetime))),
+            DataCell(Text('${job.pickupLocation} → ${job.dropoffLocation}')),
+            DataCell(Text('${job.customerName} · ${formatCurrency(job.fare)}')),
+            DataCell(Chip(label: Text(job.status), visualDensity: VisualDensity.compact)),
+            DataCell(_AcceptedJobActions(job: job)),
+          ],
+        );
       },
     );
   }
 }
 
-class _JobRow extends ConsumerStatefulWidget {
+class _JobRow extends StatelessWidget {
   const _JobRow({required this.job});
 
   final Job job;
 
   @override
-  ConsumerState<_JobRow> createState() => _JobRowState();
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        onTap: () => showJobDetailDialog(context, job),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text(formatDateTime(job.pickupDatetime))),
+                  Chip(label: Text(job.status), visualDensity: VisualDensity.compact),
+                ],
+              ),
+              if (job.hasPendingCancellation)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 4),
+                  child: Chip(
+                    label: const Text('Pending cancellation'),
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                  ),
+                ),
+              Text('${job.pickupLocation} → ${job.dropoffLocation}'),
+              Text('${job.customerName} · ${formatCurrency(job.fare)}'),
+              Text(
+                // No accepted-driver name in the job payload, only an id —
+                // full name/phone shows in the detail popup instead, which
+                // fetches it on demand.
+                'Accepted by driver ${job.acceptedByDriverId}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              _AcceptedJobActions(job: job),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _JobRowState extends ConsumerState<_JobRow> {
+/// Reassign/Cancel buttons for an accepted job — shared between the mobile
+/// card's footer and the desktop table's Actions column.
+class _AcceptedJobActions extends ConsumerStatefulWidget {
+  const _AcceptedJobActions({required this.job});
+
+  final Job job;
+
+  @override
+  ConsumerState<_AcceptedJobActions> createState() => _AcceptedJobActionsState();
+}
+
+class _AcceptedJobActionsState extends ConsumerState<_AcceptedJobActions> {
   bool _isSubmitting = false;
 
   Future<void> _cancel() async {
@@ -142,61 +215,19 @@ class _JobRowState extends ConsumerState<_JobRow> {
 
   @override
   Widget build(BuildContext context) {
-    final job = widget.job;
-    return Card(
-      child: InkWell(
-        onTap: () => showJobDetailDialog(context, job),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(child: Text(formatDateTime(job.pickupDatetime))),
-                  Chip(label: Text(job.status), visualDensity: VisualDensity.compact),
-                ],
-              ),
-              if (job.hasPendingCancellation)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, bottom: 4),
-                  child: Chip(
-                    label: const Text('Pending cancellation'),
-                    visualDensity: VisualDensity.compact,
-                    backgroundColor: Theme.of(context).colorScheme.errorContainer,
-                    labelStyle:
-                        TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
-                  ),
-                ),
-              Text('${job.pickupLocation} → ${job.dropoffLocation}'),
-              Text('${job.customerName} · ${formatCurrency(job.fare)}'),
-              Text(
-                // No accepted-driver name in the job payload, only an id —
-                // full name/phone shows in the detail popup instead, which
-                // fetches it on demand.
-                'Accepted by driver ${job.acceptedByDriverId}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: _isSubmitting ? null : _reassign,
-                    child: const Text('Reassign'),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _isSubmitting ? null : _cancel,
-                    style:
-                        TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-                    child: const Text('Cancel'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return Wrap(
+      spacing: 8,
+      children: [
+        TextButton(
+          onPressed: _isSubmitting ? null : _reassign,
+          child: const Text('Reassign'),
         ),
-      ),
+        TextButton(
+          onPressed: _isSubmitting ? null : _cancel,
+          style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 }

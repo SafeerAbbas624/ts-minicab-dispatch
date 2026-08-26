@@ -37,6 +37,10 @@ class JobsShellScreen extends ConsumerWidget {
     // destination truly applies.
     final navSelectedIndex = (index - 1).clamp(0, 4);
     return ResponsiveNavScaffold(
+      // Wider than the default 1100 — the desktop view here is a data table
+      // + detail pane, not a single centered column, so it benefits from
+      // more of the screen than a typical content page would.
+      maxContentWidth: 1600,
       selectedIndex: navSelectedIndex,
       onSelect: (i) => ref.read(jobsSubTabIndexProvider.notifier).state = i + 1,
       destinations: const [

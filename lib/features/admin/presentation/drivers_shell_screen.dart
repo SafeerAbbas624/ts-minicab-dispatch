@@ -22,6 +22,7 @@ class DriversShellScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final index = ref.watch(driversSubTabIndexProvider);
     return ResponsiveNavScaffold(
+      maxContentWidth: 1600,
       selectedIndex: index,
       onSelect: (i) => ref.read(driversSubTabIndexProvider.notifier).state = i,
       destinations: const [

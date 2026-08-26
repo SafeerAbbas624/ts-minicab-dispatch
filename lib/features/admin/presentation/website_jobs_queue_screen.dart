@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/responsive_master_detail_list.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 import 'job_edit_screen.dart';
@@ -29,7 +30,7 @@ class WebsiteJobsQueueScreen extends ConsumerWidget {
         if (jobs.isEmpty) {
           return const Center(child: Text('No jobs waiting for approval'));
         }
-        return RefreshIndicator(
+        final mobileList = RefreshIndicator(
           onRefresh: () async => ref.invalidate(adminJobsProvider('pending_approval')),
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -37,21 +38,71 @@ class WebsiteJobsQueueScreen extends ConsumerWidget {
             itemBuilder: (context, index) => _QueueItem(job: jobs[index]),
           ),
         );
+        return ResponsiveMasterDetailList<Job>(
+          items: jobs,
+          itemKey: (job) => job.id,
+          mobileList: mobileList,
+          detailFor: (job) => JobDetailView(job: job),
+          columns: const [
+            DataColumn(label: Text('Pickup')),
+            DataColumn(label: Text('Route')),
+            DataColumn(label: Text('Customer')),
+            DataColumn(label: Text('Fare')),
+            DataColumn(label: Text('Actions')),
+          ],
+          cellsFor: (job) => [
+            DataCell(Text(formatDateTime(job.pickupDatetime))),
+            DataCell(Text('${job.pickupLocation} → ${job.dropoffLocation}')),
+            DataCell(Text(job.customerName)),
+            DataCell(Text(formatCurrency(job.fare))),
+            DataCell(_QueueItemActions(job: job)),
+          ],
+        );
       },
     );
   }
 }
 
-class _QueueItem extends ConsumerStatefulWidget {
+class _QueueItem extends StatelessWidget {
   const _QueueItem({required this.job});
 
   final Job job;
 
   @override
-  ConsumerState<_QueueItem> createState() => _QueueItemState();
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        onTap: () => showJobDetailDialog(context, job),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(formatDateTime(job.pickupDatetime)),
+              Text('${job.pickupLocation} → ${job.dropoffLocation}'),
+              Text('${job.customerName} · ${formatCurrency(job.fare)}'),
+              const SizedBox(height: 8),
+              _QueueItemActions(job: job),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _QueueItemState extends ConsumerState<_QueueItem> {
+/// Edit/Approve buttons for a website job awaiting review — shared between
+/// the mobile card's footer and the desktop table's Actions column.
+class _QueueItemActions extends ConsumerStatefulWidget {
+  const _QueueItemActions({required this.job});
+
+  final Job job;
+
+  @override
+  ConsumerState<_QueueItemActions> createState() => _QueueItemActionsState();
+}
+
+class _QueueItemActionsState extends ConsumerState<_QueueItemActions> {
   bool _isSubmitting = false;
 
   Future<void> _approve() async {
@@ -79,33 +130,15 @@ class _QueueItemState extends ConsumerState<_QueueItem> {
 
   @override
   Widget build(BuildContext context) {
-    final job = widget.job;
-    return Card(
-      child: InkWell(
-        onTap: () => showJobDetailDialog(context, job),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(formatDateTime(job.pickupDatetime)),
-              Text('${job.pickupLocation} → ${job.dropoffLocation}'),
-              Text('${job.customerName} · ${formatCurrency(job.fare)}'),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  TextButton(onPressed: _isSubmitting ? null : _edit, child: const Text('Edit')),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _isSubmitting ? null : _approve,
-                    child: const Text('Approve'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return Wrap(
+      spacing: 8,
+      children: [
+        TextButton(onPressed: _isSubmitting ? null : _edit, child: const Text('Edit')),
+        FilledButton(
+          onPressed: _isSubmitting ? null : _approve,
+          child: const Text('Approve'),
         ),
-      ),
+      ],
     );
   }
 }

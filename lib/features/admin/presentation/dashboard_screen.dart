@@ -48,41 +48,57 @@ class DashboardScreen extends ConsumerWidget {
                     ?.copyWith(color: Theme.of(context).colorScheme.outline),
               ),
             ),
-            _StatCard(
-              label: 'Total jobs',
-              value: '${analytics.totalJobs}',
-              icon: Icons.work_outline,
-              onTap: () => _go(ref, tab: 1, jobsSub: 2),
-            ),
-            _StatCard(
-              label: 'Open jobs',
-              value: '${analytics.openJobs}',
-              icon: Icons.pending_actions,
-              onTap: () => _go(ref, tab: 1, jobsSub: 2),
-            ),
-            _StatCard(
-              label: 'Completed jobs',
-              value: '${analytics.completedJobs}',
-              icon: Icons.task_alt,
-              onTap: () => _go(ref, tab: 1, jobsSub: 4),
-            ),
-            _StatCard(
-              label: 'Active approved drivers',
-              value: '${analytics.activeApprovedDrivers}',
-              icon: Icons.badge_outlined,
-              onTap: () => _go(ref, tab: 2, driversSub: 2),
-            ),
-            _StatCard(
-              label: 'Revenue paid',
-              value: formatCurrency(analytics.totalRevenuePaid),
-              icon: Icons.check_circle_outline,
-              onTap: () => _go(ref, tab: 3, paymentsSub: 1),
-            ),
-            _StatCard(
-              label: 'Outstanding unpaid',
-              value: formatCurrency(analytics.totalOutstandingUnpaid),
-              icon: Icons.hourglass_bottom,
-              onTap: () => _go(ref, tab: 3, paymentsSub: 0),
+            // Grid instead of a stacked column above 600px — a single-column
+            // list of stat cards wastes most of a desktop-width screen.
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 900 ? 3 : (constraints.maxWidth >= 600 ? 2 : 1);
+                const spacing = 12.0;
+                final itemWidth = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+                final cards = [
+                  _StatCard(
+                    label: 'Total jobs',
+                    value: '${analytics.totalJobs}',
+                    icon: Icons.work_outline,
+                    onTap: () => _go(ref, tab: 1, jobsSub: 2),
+                  ),
+                  _StatCard(
+                    label: 'Open jobs',
+                    value: '${analytics.openJobs}',
+                    icon: Icons.pending_actions,
+                    onTap: () => _go(ref, tab: 1, jobsSub: 2),
+                  ),
+                  _StatCard(
+                    label: 'Completed jobs',
+                    value: '${analytics.completedJobs}',
+                    icon: Icons.task_alt,
+                    onTap: () => _go(ref, tab: 1, jobsSub: 4),
+                  ),
+                  _StatCard(
+                    label: 'Active approved drivers',
+                    value: '${analytics.activeApprovedDrivers}',
+                    icon: Icons.badge_outlined,
+                    onTap: () => _go(ref, tab: 2, driversSub: 2),
+                  ),
+                  _StatCard(
+                    label: 'Revenue paid',
+                    value: formatCurrency(analytics.totalRevenuePaid),
+                    icon: Icons.check_circle_outline,
+                    onTap: () => _go(ref, tab: 3, paymentsSub: 1),
+                  ),
+                  _StatCard(
+                    label: 'Outstanding unpaid',
+                    value: formatCurrency(analytics.totalOutstandingUnpaid),
+                    icon: Icons.hourglass_bottom,
+                    onTap: () => _go(ref, tab: 3, paymentsSub: 0),
+                  ),
+                ];
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: [for (final c in cards) SizedBox(width: itemWidth, child: c)],
+                );
+              },
             ),
             const SizedBox(height: 8),
             Padding(

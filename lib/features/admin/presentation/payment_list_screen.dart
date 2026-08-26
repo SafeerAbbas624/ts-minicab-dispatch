@@ -8,6 +8,7 @@ import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/upload_validation.dart';
+import '../../../core/widgets/responsive_master_detail_list.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 import 'widgets/job_detail_dialog.dart';
@@ -38,18 +39,14 @@ class PaymentListScreen extends ConsumerWidget {
           if (unpaid.isEmpty) {
             return const Center(child: Text('No unpaid jobs'));
           }
-          return RefreshIndicator(
+          final payments = [
+            for (final job in unpaid)
+              job.payment ?? Payment(id: job.id, jobId: job.id, amount: job.fare, isPaid: false, job: job),
+          ];
+          return _PaymentTable(
+            payments: payments,
+            isUnpaid: true,
             onRefresh: () async => ref.invalidate(adminJobsProvider('completed')),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: unpaid.length,
-              itemBuilder: (context, index) {
-                final job = unpaid[index];
-                final payment = job.payment ??
-                    Payment(id: job.id, jobId: job.id, amount: job.fare, isPaid: false, job: job);
-                return _PaymentRow(payment: payment, isUnpaid: true);
-              },
-            ),
           );
         },
       );
@@ -63,30 +60,100 @@ class PaymentListScreen extends ConsumerWidget {
         if (payments.isEmpty) {
           return const Center(child: Text('No paid jobs yet'));
         }
-        return RefreshIndicator(
+        return _PaymentTable(
+          payments: payments,
+          isUnpaid: false,
           onRefresh: () async => ref.invalidate(adminPaymentsProvider('paid')),
-          child: ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: payments.length,
-            itemBuilder: (context, index) => _PaymentRow(payment: payments[index], isUnpaid: false),
-          ),
         );
       },
     );
   }
 }
 
-class _PaymentRow extends ConsumerStatefulWidget {
+class _PaymentTable extends StatelessWidget {
+  const _PaymentTable({required this.payments, required this.isUnpaid, required this.onRefresh});
+
+  final List<Payment> payments;
+  final bool isUnpaid;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final mobileList = RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: payments.length,
+        itemBuilder: (context, index) => _PaymentRow(payment: payments[index], isUnpaid: isUnpaid),
+      ),
+    );
+    return ResponsiveMasterDetailList<Payment>(
+      items: payments,
+      itemKey: (p) => p.id,
+      mobileList: mobileList,
+      detailFor: (p) =>
+          p.job != null ? JobDetailView(job: p.job!) : const Text('No job details available'),
+      columns: const [
+        DataColumn(label: Text('Pickup')),
+        DataColumn(label: Text('Customer / Route')),
+        DataColumn(label: Text('Driver')),
+        DataColumn(label: Text('Amount / Action')),
+      ],
+      cellsFor: (p) => [
+        DataCell(Text(p.job != null ? formatDateTime(p.job!.pickupDatetime) : 'Job ${p.jobId}')),
+        DataCell(Text(
+          p.job != null ? '${p.job!.customerName} · ${p.job!.pickupLocation} → ${p.job!.dropoffLocation}' : '—',
+        )),
+        DataCell(Text(p.driver?.fullName ?? '—')),
+        DataCell(isUnpaid
+            ? _MarkPaidAction(payment: p)
+            : Chip(label: Text(formatCurrency(p.amount)))),
+      ],
+    );
+  }
+}
+
+class _PaymentRow extends StatelessWidget {
   const _PaymentRow({required this.payment, required this.isUnpaid});
 
   final Payment payment;
   final bool isUnpaid;
 
   @override
-  ConsumerState<_PaymentRow> createState() => _PaymentRowState();
+  Widget build(BuildContext context) {
+    final job = payment.job;
+    final driver = payment.driver;
+    return Card(
+      child: ListTile(
+        onTap: job != null ? () => showJobDetailDialog(context, job) : null,
+        title: Text(job != null ? formatDateTime(job.pickupDatetime) : 'Job ${payment.jobId}'),
+        subtitle: Text([
+          if (job != null) '${job.customerName} · ${job.pickupLocation} → ${job.dropoffLocation}',
+          if (driver != null) 'Driver: ${driver.fullName}',
+          if (!isUnpaid && payment.paidAt != null) 'Paid ${formatDateTime(payment.paidAt!)}',
+        ].join('\n')),
+        isThreeLine: true,
+        trailing: isUnpaid
+            ? _MarkPaidAction(payment: payment)
+            : Chip(label: Text(formatCurrency(payment.amount))),
+      ),
+    );
+  }
 }
 
-class _PaymentRowState extends ConsumerState<_PaymentRow> {
+/// "Mark Paid" button (with optional transaction-slip upload) — shared
+/// between the mobile card's trailing widget and the desktop table's
+/// Amount/Action column.
+class _MarkPaidAction extends ConsumerStatefulWidget {
+  const _MarkPaidAction({required this.payment});
+
+  final Payment payment;
+
+  @override
+  ConsumerState<_MarkPaidAction> createState() => _MarkPaidActionState();
+}
+
+class _MarkPaidActionState extends ConsumerState<_MarkPaidAction> {
   bool _isSubmitting = false;
 
   Future<void> _markPaid() async {
@@ -156,33 +223,11 @@ class _PaymentRowState extends ConsumerState<_PaymentRow> {
 
   @override
   Widget build(BuildContext context) {
-    final payment = widget.payment;
-    final job = payment.job;
-    final driver = payment.driver;
-    return Card(
-      child: ListTile(
-        onTap: job != null ? () => showJobDetailDialog(context, job) : null,
-        title: Text(job != null ? formatDateTime(job.pickupDatetime) : 'Job ${payment.jobId}'),
-        subtitle: Text([
-          if (job != null) '${job.customerName} · ${job.pickupLocation} → ${job.dropoffLocation}',
-          if (driver != null) 'Driver: ${driver.fullName}',
-          if (!widget.isUnpaid && payment.paidAt != null)
-            'Paid ${formatDateTime(payment.paidAt!)}',
-        ].join('\n')),
-        isThreeLine: true,
-        trailing: widget.isUnpaid
-            ? (_isSubmitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : FilledButton(
-                    onPressed: _markPaid,
-                    child: Text('Mark Paid  ${formatCurrency(payment.amount)}'),
-                  ))
-            : Chip(label: Text(formatCurrency(payment.amount))),
-      ),
-    );
+    return _isSubmitting
+        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+        : FilledButton(
+            onPressed: _markPaid,
+            child: Text('Mark Paid  ${formatCurrency(widget.payment.amount)}'),
+          );
   }
 }

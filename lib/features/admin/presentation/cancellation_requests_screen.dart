@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/responsive_master_detail_list.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 
@@ -25,29 +26,96 @@ class CancellationRequestsScreen extends ConsumerWidget {
         if (requests.isEmpty) {
           return const Center(child: Text('No pending cancellation requests'));
         }
-        return RefreshIndicator(
+        final mobileList = RefreshIndicator(
           onRefresh: () async => ref.invalidate(adminCancellationRequestsProvider),
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: requests.length,
-            itemBuilder: (context, index) => _RequestRow(request: requests[index]),
+            itemBuilder: (context, index) => Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: _RequestContent(request: requests[index]),
+              ),
+            ),
           ),
+        );
+        return ResponsiveMasterDetailList<CancellationRequest>(
+          items: requests,
+          itemKey: (r) => r.id,
+          mobileList: mobileList,
+          // Row selection is new on desktop — the mobile card was never
+          // tappable (only its two buttons did anything), purely additive.
+          detailFor: (r) => _RequestContent(request: r),
+          columns: const [
+            DataColumn(label: Text('Requested')),
+            DataColumn(label: Text('Driver')),
+            DataColumn(label: Text('Route')),
+            DataColumn(label: Text('Reason')),
+            DataColumn(label: Text('Actions')),
+          ],
+          cellsFor: (r) => [
+            DataCell(Text(formatDateTime(r.createdAt))),
+            DataCell(Text(r.driver?.fullName ?? '—')),
+            DataCell(Text(r.job != null ? '${r.job!.pickupLocation} → ${r.job!.dropoffLocation}' : '—')),
+            DataCell(ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
+              child: Text(r.reason, overflow: TextOverflow.ellipsis),
+            )),
+            DataCell(_RequestActions(request: r)),
+          ],
         );
       },
     );
   }
 }
 
-class _RequestRow extends ConsumerStatefulWidget {
-  const _RequestRow({required this.request});
+/// Full content for one cancellation request — requested date, driver, job
+/// route/pickup, reason, and the Approve/Reject actions. Used both as the
+/// mobile card's body and as the desktop detail pane's content.
+class _RequestContent extends StatelessWidget {
+  const _RequestContent({required this.request});
 
   final CancellationRequest request;
 
   @override
-  ConsumerState<_RequestRow> createState() => _RequestRowState();
+  Widget build(BuildContext context) {
+    final job = request.job;
+    final driver = request.driver;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Requested ${formatDateTime(request.createdAt)}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 4),
+        if (driver != null) Text(driver.fullName, style: Theme.of(context).textTheme.titleSmall),
+        if (job != null) ...[
+          Text('${job.pickupLocation} → ${job.dropoffLocation}'),
+          Text('Pickup: ${formatDateTime(job.pickupDatetime)}'),
+        ],
+        const SizedBox(height: 8),
+        Text('Reason: ${request.reason}'),
+        const SizedBox(height: 12),
+        _RequestActions(request: request),
+      ],
+    );
+  }
 }
 
-class _RequestRowState extends ConsumerState<_RequestRow> {
+/// Approve/Reject buttons for a cancellation request — shared between the
+/// mobile/desktop card content and the desktop table's Actions column.
+class _RequestActions extends ConsumerStatefulWidget {
+  const _RequestActions({required this.request});
+
+  final CancellationRequest request;
+
+  @override
+  ConsumerState<_RequestActions> createState() => _RequestActionsState();
+}
+
+class _RequestActionsState extends ConsumerState<_RequestActions> {
   bool _isSubmitting = false;
 
   Future<void> _approve() async {
@@ -153,46 +221,19 @@ class _RequestRowState extends ConsumerState<_RequestRow> {
 
   @override
   Widget build(BuildContext context) {
-    final request = widget.request;
-    final job = request.job;
-    final driver = request.driver;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Requested ${formatDateTime(request.createdAt)}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 4),
-            if (driver != null) Text(driver.fullName, style: Theme.of(context).textTheme.titleSmall),
-            if (job != null) ...[
-              Text('${job.pickupLocation} → ${job.dropoffLocation}'),
-              Text('Pickup: ${formatDateTime(job.pickupDatetime)}'),
-            ],
-            const SizedBox(height: 8),
-            Text('Reason: ${request.reason}'),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                TextButton(
-                  onPressed: _isSubmitting ? null : _reject,
-                  style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-                  child: const Text('Reject'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _isSubmitting ? null : _approve,
-                  child: const Text('Approve'),
-                ),
-              ],
-            ),
-          ],
+    return Wrap(
+      spacing: 8,
+      children: [
+        TextButton(
+          onPressed: _isSubmitting ? null : _reject,
+          style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+          child: const Text('Reject'),
         ),
-      ),
+        FilledButton(
+          onPressed: _isSubmitting ? null : _approve,
+          child: const Text('Approve'),
+        ),
+      ],
     );
   }
 }
