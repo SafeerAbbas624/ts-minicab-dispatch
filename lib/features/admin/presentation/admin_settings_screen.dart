@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/presentation/forgot_password_screen.dart';
+import '../../auth/presentation/privacy_policy_screen.dart';
+import '../../auth/presentation/terms_conditions_screen.dart';
 
 class AdminSettingsScreen extends ConsumerWidget {
   const AdminSettingsScreen({super.key});
@@ -37,6 +39,30 @@ class AdminSettingsScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
             ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: const Text('Privacy Policy'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.gavel_outlined),
+                title: const Text('Terms & Conditions'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TermsConditionsScreen()),
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 8),

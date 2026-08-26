@@ -10,6 +10,7 @@ import '../../features/auth/presentation/privacy_policy_screen.dart';
 import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
+import '../../features/auth/presentation/terms_conditions_screen.dart';
 import '../../features/driver/presentation/driver_shell.dart';
 import '../../features/admin/presentation/admin_shell.dart';
 
@@ -20,6 +21,7 @@ const _publicPrefixes = [
   '/forgot-password',
   '/reset-password',
   '/privacy-policy',
+  '/terms',
 ];
 
 bool _isPublicRoute(String loc) => _publicPrefixes.any((p) => loc.startsWith(p));
@@ -80,6 +82,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/privacy-policy',
         builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+      GoRoute(
+        path: '/terms',
+        builder: (context, state) => const TermsConditionsScreen(),
       ),
       GoRoute(
         path: '/driver',

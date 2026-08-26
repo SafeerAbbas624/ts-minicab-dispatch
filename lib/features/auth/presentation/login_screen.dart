@@ -119,9 +119,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ],
                     ),
-                    TextButton(
-                      onPressed: () => context.push('/privacy-policy'),
-                      child: const Text('Privacy policy'),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      children: [
+                        TextButton(
+                          onPressed: () => context.push('/privacy-policy'),
+                          child: const Text('Privacy policy'),
+                        ),
+                        TextButton(
+                          onPressed: () => context.push('/terms'),
+                          child: const Text('Terms & Conditions'),
+                        ),
+                      ],
                     ),
                   ],
                 ),

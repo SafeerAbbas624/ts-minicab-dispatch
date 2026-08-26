@@ -20,7 +20,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _surnameController = TextEditingController();
   final _phoneController = TextEditingController();
   bool _isLoading = false;
-  bool _agreedToPrivacyPolicy = false;
+  bool _agreedToTerms = false;
 
   @override
   void dispose() {
@@ -34,9 +34,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (!_agreedToPrivacyPolicy) {
+    if (!_agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please agree to the Privacy Policy to continue')),
+        const SnackBar(
+          content: Text('Please agree to the Privacy Policy and Terms & Conditions to continue'),
+        ),
       );
       return;
     }
@@ -113,15 +115,27 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       controlAffinity: ListTileControlAffinity.leading,
-                      value: _agreedToPrivacyPolicy,
-                      onChanged: (v) => setState(() => _agreedToPrivacyPolicy = v ?? false),
-                      title: Row(
+                      value: _agreedToTerms,
+                      onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
+                      title: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           const Text('I agree to the '),
                           GestureDetector(
                             onTap: () => context.push('/privacy-policy'),
                             child: Text(
                               'Privacy Policy',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                          const Text(' and '),
+                          GestureDetector(
+                            onTap: () => context.push('/terms'),
+                            child: Text(
+                              'Terms & Conditions',
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.primary,
                                 decoration: TextDecoration.underline,
