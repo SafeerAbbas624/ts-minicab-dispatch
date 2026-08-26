@@ -12,7 +12,10 @@ import 'widgets/document_review_dialog.dart';
 
 /// Thin Scaffold wrapper around [DriverDetailView] for the mobile
 /// full-screen push (`Navigator.push` from driver_queue_screen.dart). Desktop
-/// list screens embed [DriverDetailView] directly in a side pane instead.
+/// list screens embed [DriverDetailView] directly in a side pane instead,
+/// which already supplies its own scroll wrapper — [DriverDetailView] itself
+/// stays a plain (non-scrolling) Column so it isn't a scrollable nested
+/// inside a scrollable in that case.
 class DriverDetailScreen extends StatelessWidget {
   const DriverDetailScreen({super.key, required this.driverId});
 
@@ -22,7 +25,10 @@ class DriverDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Driver')),
-      body: DriverDetailView(driverId: driverId),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: DriverDetailView(driverId: driverId),
+      ),
     );
   }
 }
@@ -112,8 +118,9 @@ class _DriverDetailViewState extends ConsumerState<DriverDetailView> {
       error: (error, stack) => Center(child: Text(error.toString())),
       data: (detail) {
         final driver = detail.driver;
-        return ListView(
-          padding: const EdgeInsets.all(16),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(driver.fullName, style: Theme.of(context).textTheme.titleLarge),
             Text(driver.email),
