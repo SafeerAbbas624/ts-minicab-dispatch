@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,7 +10,16 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // firebase_options.dart has no web entry yet (no Firebase Web app
+  // registered in the console) — calling Firebase.initializeApp on web
+  // throws before runApp() ever runs, which crashed the whole page blank
+  // with no UI at all. Skipping it there means push notifications aren't
+  // live on web yet, but everything else (auth, jobs, payments, documents)
+  // works — PushNotificationService's caller in AuthController already
+  // catches its own failure, so this is the only guard actually needed.
+  if (!kIsWeb) {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  }
   runApp(const ProviderScope(child: MyApp()));
 }
 
