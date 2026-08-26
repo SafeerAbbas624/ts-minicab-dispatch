@@ -83,7 +83,13 @@ changes.
 ## Redeploying after a future change
 
 Repeat steps 2–3 only (build, then `scp` over the old files) — nginx and DNS
-stay as they are once set up once.
+stay as they are once set up once. `deploy/nginx-web.conf` marks
+`main.dart.js`/`flutter.js`/`flutter_bootstrap.js`/`flutter_service_worker.js`/
+`version.json` no-cache specifically so a redeploy actually reaches
+returning visitors — if a CDN sits in front of the origin (e.g. Cloudflare
+proxying this subdomain), also purge cache for those paths after deploying,
+since an edge cache can hold a stale copy of a fixed-filename file
+regardless of what the origin now serves.
 
 ## Rollback
 
