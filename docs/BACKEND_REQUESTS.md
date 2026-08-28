@@ -2,7 +2,7 @@
 
 Everything below is needed to finish the feature list requested on this date. Each item says what's missing, why, and a suggested shape — the backend session should treat the suggested shape as a starting point, not a spec set in stone. Client-side work that depends on each item is noted so priority can be judged.
 
-**Status, 26 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text. Item 10 (two new job-status steps, Start Job/Passenger On Board, with notifications) is delivered, live-verified, and fully wired client-side. Item 11 was a client-only fix, no backend involved. **Open decision (not a bug):** should admin reassign/assign extend to the two new mid-trip states — see item 10's note.
+**Status, 26 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text. Item 10 (two new job-status steps, Start Job/Passenger On Board, with notifications) is delivered, live-verified, and fully wired client-side. Item 11 was a client-only fix, no backend involved. **Open decision (not a bug):** should admin reassign/assign extend to the two new mid-trip states — see item 10's note. **Open, 28 Aug: item 12** — `/push-tokens` needs `"web"` added to its platform enum, confirmed 400ing live right now.
 
 ## 1. Prevent a driver from holding more than one active job at once
 
@@ -140,6 +140,21 @@ Two of these four already exist and needed no backend change — I relabeled the
 ## 11. Bottom-nav label overlap on narrow phones
 
 **Found and fixed client-side, no backend involved** — the admin Jobs tab's 5-item bottom nav ("Website Jobs", "Active Jobs", "Accepted", "Completed", "Cancellations") wrapped and visually overlapped on narrow/low-resolution phones. Shortened the two long ones to "Website" and "Active" (the tab itself is already titled "Jobs", so dropping the repeated word reads fine).
+
+## 12. `POST /push-tokens` rejects `platform: "web"`
+
+**Confirmed live, 28 Aug:** a Firebase Web app is now registered (needed to make push notifications work on the web build at app.tsminicab.com, deployed the same day). The client now calls `/push-tokens` with `{"device_token": "...", "platform": "web"}` once a driver/admin logs in on web, same as it already does for `"ios"`/`"android"`. Tested directly against the real API with a real demo_driver JWT:
+
+```
+POST /api/push-tokens {"device_token": "...", "platform": "web"}
+→ 400 {"error":"Validation failed","details":{"fieldErrors":{"platform":["Invalid enum value. Expected 'ios' | 'android', received 'web'"]}}}
+```
+
+So the endpoint has a strict enum validator (Zod, going by the error shape) that only accepts `ios`/`android` — `web` isn't in it at all. This isn't a crash on the client (AuthController's push-registration call is already wrapped in `.catchError`, same as any other push-token failure), but it means **no web device can ever register for push until this enum is widened** — every attempt just silently 400s forever.
+
+**Needed:** add `"web"` to the accepted `platform` enum on this endpoint. No other shape change — the request body is otherwise identical to the existing ios/android case.
+
+**Client impact:** none needed once this lands — already sending the right shape, just waiting on the enum to accept it.
 
 ---
 
