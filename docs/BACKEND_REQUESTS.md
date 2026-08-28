@@ -2,7 +2,7 @@
 
 Everything below is needed to finish the feature list requested on this date. Each item says what's missing, why, and a suggested shape — the backend session should treat the suggested shape as a starting point, not a spec set in stone. Client-side work that depends on each item is noted so priority can be judged.
 
-**Status, 26 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text. Item 10 (two new job-status steps, Start Job/Passenger On Board, with notifications) is delivered, live-verified, and fully wired client-side. Item 11 was a client-only fix, no backend involved. **Open decision (not a bug):** should admin reassign/assign extend to the two new mid-trip states — see item 10's note. **Open, 28 Aug: item 12** — `/push-tokens` needs `"web"` added to its platform enum, confirmed 400ing live right now.
+**Status, 26 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text. Item 10 (two new job-status steps, Start Job/Passenger On Board, with notifications) is delivered, live-verified, and fully wired client-side. Item 11 was a client-only fix, no backend involved. **Open decision (not a bug):** should admin reassign/assign extend to the two new mid-trip states — see item 10's note. Item 12 (`/push-tokens` platform enum missing `"web"`) is fixed and re-verified live, 28 Aug — web push registration works end-to-end now.
 
 ## 1. Prevent a driver from holding more than one active job at once
 
@@ -155,6 +155,8 @@ So the endpoint has a strict enum validator (Zod, going by the error shape) that
 **Needed:** add `"web"` to the accepted `platform` enum on this endpoint. No other shape change — the request body is otherwise identical to the existing ios/android case.
 
 **Client impact:** none needed once this lands — already sending the right shape, just waiting on the enum to accept it.
+
+**Confirmed fixed, 28 Aug** — re-ran the exact same live test with a fresh demo_driver JWT: `POST /api/push-tokens {"platform":"web",...}` now returns `201 {"message":"Push token registered"}`. Web push registration is fully live end-to-end.
 
 ---
 
