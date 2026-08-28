@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,6 +15,13 @@ const _androidChannel = AndroidNotificationChannel(
   description: 'Job status changes, driver activity, and account updates',
   importance: Importance.high,
 );
+
+/// VAPID public key for FCM Web Push, from Firebase console > Project
+/// settings > Cloud Messaging > Web configuration. Only the public half —
+/// the private key stays server-side in Google's infrastructure and is
+/// never needed (or safe to ship) client-side.
+const _webVapidKey =
+    'BL9OWZoTYmMKbxKRvMcc7NbYNaZFWOHGuX0rCbjuQmWP_6FIZ13mQUChcmvTbtXW3IXYoT0ZBMSzGBs82901nSc';
 
 /// Registers this device's FCM token with the backend on login/app start and
 /// again on every token refresh, per the spec. Called from
@@ -44,17 +52,28 @@ class PushNotificationService {
   Future<void> initialize() async {
     final messaging = FirebaseMessaging.instance;
     await messaging.requestPermission();
-    await messaging.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
 
-    if (Platform.isAndroid) {
-      await _initLocalNotifications();
+    String? token;
+    if (kIsWeb) {
+      // dart:io's Platform throws if touched at all on web (even just
+      // reading Platform.isAndroid), so this branch must never reach the
+      // native-only calls below. setForegroundNotificationPresentationOptions
+      // is iOS/macOS-only and flutter_local_notifications has no web
+      // backend, so neither applies here — background pushes are shown by
+      // the browser itself via web/firebase-messaging-sw.js instead.
+      token = await messaging.getToken(vapidKey: _webVapidKey);
+    } else {
+      await messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      if (Platform.isAndroid) {
+        await _initLocalNotifications();
+      }
+      token = await messaging.getToken();
     }
 
-    final token = await messaging.getToken();
     if (token != null) {
       await _register(token);
     }
@@ -91,7 +110,11 @@ class PushNotificationService {
 
   void _showForegroundNotification(RemoteMessage message) {
     final notification = message.notification;
-    if (notification == null || !Platform.isAndroid) return;
+    // kIsWeb checked first — dart:io's Platform.isAndroid throws on web if
+    // evaluated at all, and short-circuiting `||` never reaches it here.
+    // No foreground-tab banner on web yet (see the comment in initialize());
+    // background/unfocused-tab pushes still work via the service worker.
+    if (notification == null || kIsWeb || !Platform.isAndroid) return;
     _localNotifications.show(
       notification.hashCode,
       notification.title,
@@ -155,7 +178,7 @@ class PushNotificationService {
   }
 
   Future<void> _register(String deviceToken) {
-    final platform = Platform.isIOS ? 'ios' : 'android';
+    final platform = kIsWeb ? 'web' : (Platform.isIOS ? 'ios' : 'android');
     return _ref
         .read(pushTokenRepositoryProvider)
         .register(deviceToken: deviceToken, platform: platform);

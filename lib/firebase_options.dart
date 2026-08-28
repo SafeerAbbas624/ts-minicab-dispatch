@@ -20,11 +20,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web — '
-        'run `flutterfire configure` to add a web app if push notifications '
-        'are ever needed there too.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -53,5 +49,15 @@ class DefaultFirebaseOptions {
     projectId: 'ts-mincab',
     storageBucket: 'ts-mincab.firebasestorage.app',
     iosBundleId: 'com.tsminicab.dispatch',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBrFLjeZOhFROx3Ou_5DR4PQoA3hC5goiE',
+    appId: '1:873160171304:web:28c05e1b9ea0bc076ffa1d',
+    messagingSenderId: '873160171304',
+    projectId: 'ts-mincab',
+    authDomain: 'ts-mincab.firebaseapp.com',
+    storageBucket: 'ts-mincab.firebasestorage.app',
+    measurementId: 'G-VHPEBQ6MXP',
   );
 }
