@@ -158,6 +158,8 @@ So the endpoint has a strict enum validator (Zod, going by the error shape) that
 
 **Confirmed fixed, 28 Aug** — re-ran the exact same live test with a fresh demo_driver JWT: `POST /api/push-tokens {"platform":"web",...}` now returns `201 {"message":"Push token registered"}`. Web push registration is fully live end-to-end.
 
+**Confirmed end-to-end, 29 Aug** — real human test, not just an API check: logged in on `app.tsminicab.com` in a real browser, granted the notification permission prompt, backgrounded the tab, triggered a driver-facing push, and it actually arrived as a real browser notification. Web push is fully working, start to finish.
+
 ---
 
 ## Already handled, no backend change needed
