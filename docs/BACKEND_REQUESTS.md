@@ -2,7 +2,7 @@
 
 Everything below is needed to finish the feature list requested on this date. Each item says what's missing, why, and a suggested shape — the backend session should treat the suggested shape as a starting point, not a spec set in stone. Client-side work that depends on each item is noted so priority can be judged.
 
-**Status, 26 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text. Item 10 (two new job-status steps, Start Job/Passenger On Board, with notifications) is delivered, live-verified, and fully wired client-side. Item 11 was a client-only fix, no backend involved. **Open decision (not a bug):** should admin reassign/assign extend to the two new mid-trip states — see item 10's note. Item 12 (`/push-tokens` platform enum missing `"web"`) is fixed and re-verified live, 28 Aug — web push registration works end-to-end now.
+**Status, 26 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text. Item 10 (two new job-status steps, Start Job/Passenger On Board, with notifications) is delivered, live-verified, and fully wired client-side. Item 11 was a client-only fix, no backend involved. **Open decision (not a bug):** should admin reassign/assign extend to the two new mid-trip states — see item 10's note. Item 12 (`/push-tokens` platform enum missing `"web"`) is fixed and re-verified live, 28 Aug — web push registration works end-to-end now. **Pre-launch, 29 Aug:** item 1's one-active-job rule is being reworked into a time-overlap check (see item 1's reopened note); item 13 (auth rate limiting) is a new, real security gap to close before launch; item 14 records the backup/data-wipe decision — wipe is authorized but held until item 1's rework is tested.
 
 ## 1. Prevent a driver from holding more than one active job at once
 
@@ -11,6 +11,12 @@ Everything below is needed to finish the feature list requested on this date. Ea
 **Needed:** before accepting, reject with 409 if the driver already has a job in `accepted` or `arrived` status. Recommended: block on *any* existing active job, not just time-overlapping ones — simplest to implement, and safest from a dispatch-integrity standpoint (a driver mid-job accepting a same-day job "for later" is exactly the kind of thing that goes wrong when the first job runs long). If sequential non-overlapping jobs should be allowed instead (driver 1 holds an 8am, 11am, and 2pm job simultaneously), that needs a time-window overlap check instead of a flat one-active-job rule — worth deciding explicitly rather than defaulting to it.
 
 **Client impact:** none needed once this lands — the driver app already only shows one "active job" slot in its UI; it just isn't backed by a server-side guarantee yet.
+
+**Reopened, 29 Aug — decision reversed.** This was built as the flat "block on any active job" rule (confirmed live, still enforced today). The user now wants the other option: a driver holding an active job should still be able to browse and accept *other* jobs, as long as they don't overlap in time.
+
+**Needed — updated shape:** change `POST /jobs/:id/accept`'s check from "driver has any job in `accepted`/`en_route`/`arrived`/`passenger_on_board`" to a time-window overlap check against the driver's other active jobs' `pickupDatetime`. There's no trip-duration/estimated-dropoff field on a job, so "overlap" needs a policy buffer rather than exact time math — suggest reusing the 2-hour window already established elsewhere in this system (the cancellation cutoff) as the minimum gap required between two of a driver's active jobs' pickup times, unless you'd rather define it differently. 409 (same as today) if the new job's pickup falls inside that buffer around any existing active job.
+
+**Client impact:** real UI change, being built now — the Jobs tab currently shows either the single active job *or* the open-jobs list, never both. It needs to show all of a driver's currently-active jobs together, still alongside the open-jobs list so more (non-conflicting) jobs can be browsed and accepted. Held until this backend change lands so it can be tested against the real rule, not assumed.
 
 ## 2. Document viewing and verification for admins
 
@@ -159,6 +165,26 @@ So the endpoint has a strict enum validator (Zod, going by the error shape) that
 **Confirmed fixed, 28 Aug** — re-ran the exact same live test with a fresh demo_driver JWT: `POST /api/push-tokens {"platform":"web",...}` now returns `201 {"message":"Push token registered"}`. Web push registration is fully live end-to-end.
 
 **Confirmed end-to-end, 29 Aug** — real human test, not just an API check: logged in on `app.tsminicab.com` in a real browser, granted the notification permission prompt, backgrounded the tab, triggered a driver-facing push, and it actually arrived as a real browser notification. Web push is fully working, start to finish.
+
+## 13. Auth endpoints have no rate limiting — exploitable, needs fixing before real launch
+
+**Found in the pre-launch production audit, 29 Aug.** `POST /auth/login`, `/auth/driver/signup`, `/auth/driver/verify-otp`, and `/auth/request-password-reset` / `/auth/reset-password` all accept unlimited attempts — no lockout, no throttling. The OTP specifically is a 6-digit code, brute-forceable in a realistic number of requests with no rate limit in front of it. The sibling tsminicab.com site already has its own rate limiter (`lib/rateLimit.js`) — the dispatch API never got an equivalent.
+
+**Needed:** rate-limit these endpoints — a per-IP and/or per-account attempt cap with a lockout/backoff window is the standard shape (exact numbers are your call; something like 5–10 attempts per 15 minutes per endpoint is a reasonable starting point). The OTP endpoint matters most given how brute-forceable a 6-digit code is without one.
+
+**Client impact:** none expected — a 429 (or however you signal it) just needs to surface as a normal `ApiException` message, which the client already handles generically on every auth screen.
+
+**User decision, 29 Aug:** fix this before the production data wipe (item 14) and before real store submission — flagged as the top priority alongside item 1's reopened decision.
+
+## 14. Production data: manual backups, and a data wipe once item 1's rework is tested
+
+**Context:** pre-launch audit (29 Aug) found no automated backups and confirmed everything in the DB beyond `demo_admin`/`demo_driver` is test/QA debris (8 test accounts including one under the user's own personal email, 44 test jobs, 6 payments, 17 driver notes, 37 documents, 86 admin log entries, 7 cancellation requests) — full breakdown in the backend session's own audit report.
+
+**Decided, 29 Aug:**
+- **Backups: the user will handle this manually.** No automated backup setup needed from the backend session — noted so it doesn't get actioned as an open task.
+- **Data wipe: authorized, but held.** Delete everything except `demo_admin`/`demo_driver` (which stay permanently — required App Store/Play reviewer accounts) once item 1's reworked overlap-based accept logic is built *and tested*. Do not delete before then — the client-side multi-active-job feature needs real data to test against first.
+
+**Client impact:** none directly — this is a backend/DB action. Sequencing depends on item 1 and the client rework landing first.
 
 ---
 
