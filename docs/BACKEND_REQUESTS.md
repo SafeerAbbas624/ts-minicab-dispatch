@@ -16,7 +16,9 @@ Everything below is needed to finish the feature list requested on this date. Ea
 
 **Needed — updated shape:** change `POST /jobs/:id/accept`'s check from "driver has any job in `accepted`/`en_route`/`arrived`/`passenger_on_board`" to a time-window overlap check against the driver's other active jobs' `pickupDatetime`. There's no trip-duration/estimated-dropoff field on a job, so "overlap" needs a policy buffer rather than exact time math — suggest reusing the 2-hour window already established elsewhere in this system (the cancellation cutoff) as the minimum gap required between two of a driver's active jobs' pickup times, unless you'd rather define it differently. 409 (same as today) if the new job's pickup falls inside that buffer around any existing active job.
 
-**Client impact:** done and deployed, 30 Aug — the Jobs tab now shows every one of a driver's active jobs as a compact card in a horizontal strip (tap through to the full step controls), with the open-jobs list still reachable underneath either way. Accepting a second job goes through the same existing flow/error handling as any accept, so no extra logic was needed for the conflict case itself. **Not yet verified end-to-end** — needs the backend's overlap-check change live first, then a real test of accepting two non-conflicting jobs back-to-back.
+**Client impact:** done and deployed, 30 Aug — the Jobs tab now shows every one of a driver's active jobs as a compact card in a horizontal strip (tap through to the full step controls), with the open-jobs list still reachable underneath either way. Accepting a second job goes through the same existing flow/error handling as any accept, so no extra logic was needed for the conflict case itself.
+
+**Confirmed live end-to-end, 30 Aug** — tested directly against the real API with real demo_driver/demo_admin tokens, not just taking the backend session's report at face value: created 3 test jobs (A at +3h, B at +6h, C at +3h30m), accepted A (200), accepted B (200, 3h apart from A — no conflict), attempted C (409, `"This job's pickup time is too close to another job you're already assigned to (must be at least 2h apart)"`, exactly 30 min from A). Confirmed `GET /jobs/mine` shows A and B both `status:"accepted"` simultaneously. Test jobs cancelled/cleaned up afterward. Auth rate limiting also confirmed live per the backend's own report (login 10/15min, signup 5/60min, OTP verify 10/15min, password-reset request 5/60min, submit 10/15min).
 
 ## 2. Document viewing and verification for admins
 
@@ -176,6 +178,8 @@ So the endpoint has a strict enum validator (Zod, going by the error shape) that
 
 **User decision, 29 Aug:** fix this before the production data wipe (item 14) and before real store submission — flagged as the top priority alongside item 1's reopened decision.
 
+**Confirmed live, 30 Aug** — per the backend session's report: login 10/15min, signup 5/60min, OTP verify 10/15min, password-reset request 5/60min, password-reset submit 10/15min. Verified by them hitting login 11 times: 10× 401, then a 429 with a proper `Retry-After` header. Not independently re-tested on this side (would mean locking out the demo account for real), but the shape matches what was asked for.
+
 ## 14. Production data: manual backups, and a data wipe once item 1's rework is tested
 
 **Context:** pre-launch audit (29 Aug) found no automated backups and confirmed everything in the DB beyond `demo_admin`/`demo_driver` is test/QA debris (8 test accounts including one under the user's own personal email, 44 test jobs, 6 payments, 17 driver notes, 37 documents, 86 admin log entries, 7 cancellation requests) — full breakdown in the backend session's own audit report.
@@ -185,6 +189,8 @@ So the endpoint has a strict enum validator (Zod, going by the error shape) that
 - **Data wipe: authorized, but held.** Delete everything except `demo_admin`/`demo_driver` (which stay permanently — required App Store/Play reviewer accounts) once item 1's reworked overlap-based accept logic is built *and tested*. Do not delete before then — the client-side multi-active-job feature needs real data to test against first.
 
 **Client impact:** none directly — this is a backend/DB action. Sequencing depends on item 1 and the client rework landing first.
+
+**Condition met, 30 Aug** — item 1's rework is live and independently verified end-to-end (see item 1's own confirmation above), and item 13's rate limiting is also live. The wipe's stated precondition is satisfied; checking with the user for a final explicit go-ahead before it actually runs, given it's irreversible.
 
 ---
 
