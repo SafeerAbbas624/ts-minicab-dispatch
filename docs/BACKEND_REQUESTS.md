@@ -2,7 +2,7 @@
 
 Everything below is needed to finish the feature list requested on this date. Each item says what's missing, why, and a suggested shape — the backend session should treat the suggested shape as a starting point, not a spec set in stone. Client-side work that depends on each item is noted so priority can be judged.
 
-**Status, 26 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text. Item 10 (two new job-status steps, Start Job/Passenger On Board, with notifications) is delivered, live-verified, and fully wired client-side. Item 11 was a client-only fix, no backend involved. **Open decision (not a bug):** should admin reassign/assign extend to the two new mid-trip states — see item 10's note. Item 12 (`/push-tokens` platform enum missing `"web"`) is fixed and re-verified live, 28 Aug — web push registration works end-to-end now. **Pre-launch, 29 Aug:** item 1's one-active-job rule is being reworked into a time-overlap check (see item 1's reopened note); item 13 (auth rate limiting) is a new, real security gap to close before launch; item 14 records the backup/data-wipe decision — wipe is authorized but held until item 1's rework is tested.
+**Status, 26 Aug 2026: everything through item 9 is closed out.** All 6 original items delivered and live, client-side wiring done and live-verified. The two item 5 follow-up bugs (`penalize: false`, review-note field-name mismatch) are fixed and re-verified live; item 4's phone-number gap is fixed; item 7 (`POST /push-tokens` 403 for admins) is fixed. Item 8 is decided (Option C — see below); item 9's `data.type` payload is delivered, verified live end-to-end, and the client now routes on it instead of matching title text. Item 10 (two new job-status steps, Start Job/Passenger On Board, with notifications) is delivered, live-verified, and fully wired client-side. Item 11 was a client-only fix, no backend involved. **Open decision (not a bug):** should admin reassign/assign extend to the two new mid-trip states — see item 10's note. Item 12 (`/push-tokens` platform enum missing `"web"`) is fixed and re-verified live, 28 Aug — web push registration works end-to-end now. **Pre-launch, 30 Aug — all closed.** Item 1's rework (time-overlap check replacing the flat one-active-job rule) is live and independently verified end-to-end. Item 13 (auth rate limiting) is live on all 5 auth endpoints. Item 14's production data wipe is done — only `demo_admin`/`demo_driver` remain, verified live. **Only remaining pre-launch item, not tracked here since it's not backend code: automated database backups still don't exist** — the user is handling this manually, flagged so it doesn't get lost.
 
 ## 1. Prevent a driver from holding more than one active job at once
 
@@ -191,6 +191,25 @@ So the endpoint has a strict enum validator (Zod, going by the error shape) that
 **Client impact:** none directly — this is a backend/DB action. Sequencing depends on item 1 and the client rework landing first.
 
 **Condition met, 30 Aug** — item 1's rework is live and independently verified end-to-end (see item 1's own confirmation above), and item 13's rate limiting is also live. The wipe's stated precondition is satisfied; checking with the user for a final explicit go-ahead before it actually runs, given it's irreversible.
+
+**Done, 30 Aug.** User gave explicit direct go-ahead (confirmed with both this session and the backend session separately, not just a relay). Ran in a single transaction with FK-safe delete order. Kept: `demo.admin@tsminicab.com` and `demo.driver@tsminicab.com`, nothing else.
+
+| Table | Before | After |
+|---|---|---|
+| User | 10 | 2 |
+| Driver | 8 | 1 |
+| Vehicle | 5 | 1 |
+| DriverDocument | 37 | 5 |
+| DriverNote | 17 | 5 |
+| Job | 47 | 0 |
+| JobEvent | 209 | 0 |
+| Payment | 6 | 0 |
+| CancellationRequest | 7 | 0 |
+| AdminActionLog | 89 | 74 |
+| PushToken | 26 | 21 |
+| OtpCode | 16 | 12 |
+
+Independently re-verified live: `GET /health` → `{"status":"ok"}`, `demo_driver`'s `/jobs/mine` returns `[]`, `demo_admin`'s `/admin/drivers` returns exactly one driver (demo_driver). Item 14 closed.
 
 ---
 
