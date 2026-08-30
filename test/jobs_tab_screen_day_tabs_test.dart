@@ -30,7 +30,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          activeJobProvider.overrideWith((ref) => Future.value(null)),
+          activeJobsProvider.overrideWith((ref) => Future.value(const [])),
           openJobsProvider.overrideWith((ref) => Future.value([todayJob, nextJob, laterJob])),
         ],
         child: const MaterialApp(home: Scaffold(body: JobsTabScreen())),

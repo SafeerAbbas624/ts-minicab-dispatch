@@ -29,18 +29,17 @@ final driverMeProvider = FutureProvider.autoDispose<Driver>((ref) {
 /// passenger_on_board → completed, confirmed live 26 Aug).
 const activeJobStatuses = {'accepted', 'en_route', 'arrived', 'passenger_on_board'};
 
-/// The driver's current in-progress job, if any. `/jobs/mine` isn't
-/// documented as filterable by status, so this filters client-side — flag to
-/// the backend session if a dedicated "current job" endpoint would be
-/// cheaper.
-final activeJobProvider = FutureProvider.autoDispose<Job?>((ref) async {
+/// All of the driver's current in-progress jobs, sorted by pickup time —
+/// once the backend allows a driver to hold more than one non-overlapping
+/// active job at a time (docs/BACKEND_REQUESTS.md item 1, reopened), this
+/// can be more than one. `/jobs/mine` isn't documented as filterable by
+/// status, so this filters client-side — flag to the backend session if a
+/// dedicated "current jobs" endpoint would be cheaper.
+final activeJobsProvider = FutureProvider.autoDispose<List<Job>>((ref) async {
   final jobs = await ref.watch(myJobsProvider.future);
-  for (final job in jobs) {
-    if (activeJobStatuses.contains(job.status)) {
-      return job;
-    }
-  }
-  return null;
+  final active = jobs.where((job) => activeJobStatuses.contains(job.status)).toList();
+  active.sort((a, b) => a.pickupDatetime.compareTo(b.pickupDatetime));
+  return active;
 });
 
 /// Which bottom-nav tab DriverShell is showing: 0=Jobs, 1=History,

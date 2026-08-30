@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
 import '../application/driver_providers.dart';
+import 'active_job_screen.dart';
 import 'job_detail_screen.dart';
-import 'widgets/active_job_view.dart';
+import 'widgets/active_job_summary_card.dart';
 import 'widgets/job_card.dart';
 import 'widgets/job_day_grouping.dart';
 import 'widgets/pending_approval_view.dart';
@@ -15,9 +16,9 @@ class JobsTabScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activeJobAsync = ref.watch(activeJobProvider);
+    final activeJobsAsync = ref.watch(activeJobsProvider);
 
-    return activeJobAsync.when(
+    return activeJobsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) {
         // The backend has no "approval status" field on the session — it
@@ -31,26 +32,61 @@ class JobsTabScreen extends ConsumerWidget {
             message: error.message,
             onRefresh: () {
               ref.invalidate(myJobsProvider);
-              ref.invalidate(activeJobProvider);
+              ref.invalidate(activeJobsProvider);
             },
           );
         }
         return _ErrorView(
           message: error.toString(),
-          // activeJobProvider derives from myJobsProvider — if that's what
-          // actually failed, invalidating only activeJobProvider re-reads the
-          // same cached failure instead of retrying the real request.
+          // activeJobsProvider derives from myJobsProvider — if that's what
+          // actually failed, invalidating only activeJobsProvider re-reads
+          // the same cached failure instead of retrying the real request.
           onRetry: () {
             ref.invalidate(myJobsProvider);
-            ref.invalidate(activeJobProvider);
+            ref.invalidate(activeJobsProvider);
           },
         );
       },
-      data: (activeJob) {
-        if (activeJob != null) {
-          return ActiveJobView(job: activeJob);
-        }
-        return const _OpenJobsList();
+      data: (activeJobs) {
+        // A driver can hold more than one active job at once (as long as
+        // they don't conflict in time, enforced server-side) — so unlike
+        // before, the open-jobs list stays reachable even with active jobs
+        // in progress, instead of being replaced by them.
+        return Column(
+          children: [
+            if (activeJobs.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Text(
+                  'Active Jobs',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              SizedBox(
+                height: 168,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: activeJobs.length,
+                  itemBuilder: (context, index) {
+                    final job = activeJobs[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ActiveJobSummaryCard(
+                        job: job,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => ActiveJobScreen(job: job)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+            ],
+            const Expanded(child: _OpenJobsList()),
+          ],
+        );
       },
     );
   }

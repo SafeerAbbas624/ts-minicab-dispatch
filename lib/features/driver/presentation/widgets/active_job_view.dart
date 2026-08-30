@@ -7,6 +7,18 @@ import '../../../../core/utils/formatters.dart';
 import '../../application/driver_providers.dart';
 import '../../data/driver_repository.dart';
 
+const _activeJobStatusLabels = {
+  'accepted': 'Accepted — ready to start',
+  'en_route': 'En route to pickup',
+  'arrived': 'Arrived at pickup',
+  'passenger_on_board': 'Passenger on board',
+};
+
+/// Human-readable label for an active job's current status — shared with
+/// [ActiveJobSummaryCard] so the Jobs tab's compact cards use the same
+/// wording as the full step-controls view.
+String activeJobStepLabel(String status) => _activeJobStatusLabels[status] ?? status;
+
 class ActiveJobView extends ConsumerStatefulWidget {
   const ActiveJobView({super.key, required this.job});
 
@@ -21,7 +33,7 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
 
   void _refreshJobState() {
     ref.invalidate(myJobsProvider);
-    ref.invalidate(activeJobProvider);
+    ref.invalidate(activeJobsProvider);
     ref.invalidate(openJobsProvider);
   }
 
@@ -146,15 +158,6 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
     );
   }
 
-  static const _statusLabels = {
-    'accepted': 'Accepted — ready to start',
-    'en_route': 'En route to pickup',
-    'arrived': 'Arrived at pickup',
-    'passenger_on_board': 'Passenger on board',
-  };
-
-  String _stepLabel(String status) => _statusLabels[status] ?? status;
-
   static const List<(String, String, IconData, String, String?)> _steps = [
     ('accepted', 'Start Job', Icons.play_circle_outline, 'en_route', null),
     ('en_route', 'Arrived to Pickup', Icons.pin_drop, 'arrived', null),
@@ -215,7 +218,7 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
                 Text('Active Job', style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: 4),
                 Text(
-                  _stepLabel(job.status),
+                  activeJobStepLabel(job.status),
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall
