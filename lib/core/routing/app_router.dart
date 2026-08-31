@@ -15,18 +15,25 @@ import '../../features/auth/presentation/terms_conditions_screen.dart';
 import '../../features/driver/presentation/driver_shell.dart';
 import '../../features/admin/presentation/admin_shell.dart';
 
-const _publicPrefixes = [
+const _authFlowPrefixes = [
   '/login',
   '/signup',
   '/otp',
   '/forgot-password',
   '/reset-password',
-  '/privacy-policy',
-  '/terms',
-  '/delete-account',
 ];
 
-bool _isPublicRoute(String loc) => _publicPrefixes.any((p) => loc.startsWith(p));
+/// Reference pages that must stay reachable by direct URL no matter who's
+/// logged in — Play/App Store reviewers, and Google's Data Safety form
+/// specifically, link straight to these. Previously these lived in the same
+/// list as the auth-flow routes below and were only ever checked in the
+/// `unauthenticated` branch, so an already-logged-in browser (e.g. a stale
+/// session from earlier testing) skipped the check entirely and got bounced
+/// straight to /admin or /driver instead of ever seeing the page.
+const _alwaysPublicPrefixes = ['/privacy-policy', '/terms', '/delete-account'];
+
+bool _isAuthFlowRoute(String loc) => _authFlowPrefixes.any((p) => loc.startsWith(p));
+bool _isAlwaysPublicRoute(String loc) => _alwaysPublicPrefixes.any((p) => loc.startsWith(p));
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {
@@ -42,12 +49,16 @@ String? _redirect(Ref ref, GoRouterState state) {
   final auth = ref.read(authControllerProvider);
   final loc = state.matchedLocation;
 
+  // Checked first, before any auth-status branch — these pages stay
+  // reachable by direct URL regardless of whether anyone's logged in.
+  if (_isAlwaysPublicRoute(loc)) return null;
+
   if (auth.status == AuthStatus.checking) {
     return loc == '/splash' ? null : '/splash';
   }
 
   if (auth.status == AuthStatus.unauthenticated) {
-    return _isPublicRoute(loc) ? null : '/login';
+    return _isAuthFlowRoute(loc) ? null : '/login';
   }
 
   final role = auth.role!;
