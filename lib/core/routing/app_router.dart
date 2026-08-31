@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/application/auth_controller.dart';
+import '../../features/auth/presentation/delete_account_info_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/otp_screen.dart';
@@ -22,6 +23,7 @@ const _publicPrefixes = [
   '/reset-password',
   '/privacy-policy',
   '/terms',
+  '/delete-account',
 ];
 
 bool _isPublicRoute(String loc) => _publicPrefixes.any((p) => loc.startsWith(p));
@@ -86,6 +88,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/terms',
         builder: (context, state) => const TermsConditionsScreen(),
+      ),
+      GoRoute(
+        path: '/delete-account',
+        builder: (context, state) => const DeleteAccountInfoScreen(),
       ),
       GoRoute(
         path: '/driver',
