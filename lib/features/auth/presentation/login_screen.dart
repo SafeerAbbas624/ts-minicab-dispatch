@@ -130,6 +130,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           onPressed: () => context.push('/terms'),
                           child: const Text('Terms & Conditions'),
                         ),
+                        TextButton(
+                          onPressed: () => context.push('/delete-account'),
+                          child: const Text('Delete my account'),
+                        ),
                       ],
                     ),
                   ],
