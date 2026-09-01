@@ -63,7 +63,7 @@ class DeleteAccountInfoScreen extends StatelessWidget {
             const SizedBox(height: 24),
             const Text(
               'If you can no longer log in and need your account and data deleted, '
-              'contact privacy@tsminicab.com from the email address on the account.',
+              'contact admin@tsminicab.com from the email address on the account.',
               style: TextStyle(height: 1.5),
             ),
           ],

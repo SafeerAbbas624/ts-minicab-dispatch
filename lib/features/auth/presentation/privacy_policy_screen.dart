@@ -111,7 +111,7 @@ update this page and change the "Last updated" date above.
 9. Contact us
 
 Questions about this policy, or a request relating to your data, can be
-sent to privacy@tsminicab.com.
+sent to admin@tsminicab.com.
 ''';
 
 class PrivacyPolicyScreen extends StatelessWidget {

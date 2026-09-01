@@ -112,7 +112,7 @@ These terms are governed by the laws of England and Wales.
 
 13. Contact us
 
-Questions about these terms can be sent to support@tsminicab.com.
+Questions about these terms can be sent to admin@tsminicab.com.
 ''';
 
 class TermsConditionsScreen extends StatelessWidget {
