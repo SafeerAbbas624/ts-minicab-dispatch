@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/document_types.dart';
 import '../../../core/models/driver.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/upload_validation.dart';
 import '../application/driver_providers.dart';
@@ -42,12 +43,17 @@ class DocumentsScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                if (me?.compliance != null) _ComplianceSummary(compliance: me!.compliance!),
+                _ComplianceSummary(
+                  approved: required.where((t) => byType[t]?.isVerified ?? false).length,
+                  total: required.length,
+                  compliance: me?.compliance,
+                ),
+                const SizedBox(height: 8),
                 const _SectionTitle('Required'),
-                for (final type in required) _DocumentTile(type: type, document: byType[type]),
+                _DocumentGroup(types: required, byType: byType),
                 const SizedBox(height: 8),
                 const _SectionTitle('Optional'),
-                for (final type in optionalDocumentTypes) _DocumentTile(type: type, document: byType[type]),
+                _DocumentGroup(types: optionalDocumentTypes, byType: byType),
               ],
             ),
           );
@@ -68,31 +74,86 @@ class _SectionTitle extends StatelessWidget {
       );
 }
 
+/// "7 of 9 approved" with a bar, plus the single most urgent message.
 class _ComplianceSummary extends StatelessWidget {
-  const _ComplianceSummary({required this.compliance});
-  final DriverCompliance compliance;
+  const _ComplianceSummary({required this.approved, required this.total, this.compliance});
+
+  final int approved;
+  final int total;
+  final DriverCompliance? compliance;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final (icon, color, bg, title) = compliance.hasExpired
-        ? (Icons.error, colors.onErrorContainer, colors.errorContainer, 'A document has expired — you can\'t take jobs until it\'s replaced')
-        : compliance.hasExpiringSoon
-            ? (Icons.schedule, colors.onTertiaryContainer, colors.tertiaryContainer, 'A document expires soon — upload the renewal')
-            : compliance.compliant
-                ? (Icons.verified, colors.onPrimaryContainer, colors.primaryContainer, 'All documents verified and in date')
-                : (Icons.pending_actions, colors.onSecondaryContainer, colors.secondaryContainer, 'Some documents still need uploading or review');
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final cp = compliance;
+    final (IconData icon, Color color, String message) = cp != null && cp.hasExpired
+        ? (Icons.error_outline, c.error, "A document has expired. You can't take jobs until it's replaced.")
+        : cp != null && cp.hasExpiringSoon
+            ? (Icons.schedule, c.tertiary, 'A document expires soon — upload the renewal now.')
+            : approved == total
+                ? (Icons.verified_outlined, context.statusColors.onDone, 'All required documents are approved and in date.')
+                : (Icons.pending_actions_outlined, c.onSurfaceVariant,
+                    'Upload every required document. Each one is checked by the operating centre.');
     return Card(
-      color: bg,
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 12),
-            Expanded(child: Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w600))),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('$approved', style: t.headlineMedium?.copyWith(fontFeatures: tabularFigures)),
+                Text(' of $total approved', style: t.titleMedium?.copyWith(color: c.onSurfaceVariant)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: total == 0 ? 0 : approved / total,
+                minHeight: 8,
+                color: approved == total ? context.statusColors.onDone : c.tertiary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, size: 20, color: color),
+                const SizedBox(width: 8),
+                Expanded(child: Text(message, style: t.bodyMedium)),
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One card per section, documents as rows split by dividers.
+class _DocumentGroup extends StatelessWidget {
+  const _DocumentGroup({required this.types, required this.byType});
+
+  final List<String> types;
+  final Map<String, DriverDocument> byType;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < types.length; i++) ...[
+            if (i > 0) const Divider(indent: 56),
+            _DocumentTile(type: types[i], document: byType[types[i]]),
+          ],
+        ],
       ),
     );
   }
@@ -190,10 +251,11 @@ class _DocumentTileState extends ConsumerState<_DocumentTile> {
         : expired || isRejected
             ? (Icons.cancel, colors.error)
             : isVerified
-                ? (Icons.check_circle, Colors.green)
-                : (Icons.hourglass_top, Colors.orange);
+                ? (Icons.check_circle, context.statusColors.onDone)
+                : (Icons.hourglass_top, context.statusColors.onWaiting);
 
-    return Card(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
         title: Text(documentTypeLabel(widget.type)),
         subtitle: Column(

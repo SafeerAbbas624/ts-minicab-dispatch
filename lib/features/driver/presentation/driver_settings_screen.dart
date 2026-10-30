@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/status_pill.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/presentation/privacy_policy_screen.dart';
 import '../../auth/presentation/terms_conditions_screen.dart';
@@ -109,21 +110,52 @@ class DriverSettingsScreen extends ConsumerWidget {
         driverAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) => Text(error.toString()),
-          data: (driver) => Card(
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundImage:
-                    driver.avatarUrl != null ? NetworkImage(driver.avatarUrl!) : null,
-                child: driver.avatarUrl == null ? const Icon(Icons.person) : null,
+          data: (driver) {
+            final c = Theme.of(context).colorScheme;
+            final t = Theme.of(context).textTheme;
+            return Card(
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: c.secondaryContainer,
+                      foregroundColor: c.onSecondaryContainer,
+                      backgroundImage: driver.avatarUrl != null ? NetworkImage(driver.avatarUrl!) : null,
+                      child: driver.avatarUrl == null
+                          ? Text(
+                              driver.fullName.isEmpty ? '?' : driver.fullName[0].toUpperCase(),
+                              style: t.titleLarge?.copyWith(color: c.onSecondaryContainer),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(driver.fullName, style: t.titleMedium),
+                          const SizedBox(height: 2),
+                          Text(driver.email, style: t.bodySmall, overflow: TextOverflow.ellipsis),
+                          if (driver.callSign != null) ...[
+                            const SizedBox(height: 8),
+                            StatusPill(label: 'Call sign ${driver.callSign}', tone: StatusTone.assigned),
+                          ],
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Set profile photo',
+                      onPressed: () => _setAvatarUrl(context, ref),
+                      icon: const Icon(Icons.add_a_photo_outlined),
+                    ),
+                  ],
+                ),
               ),
-              title: Text(driver.fullName),
-              subtitle: Text(driver.callSign != null ? 'Call sign ${driver.callSign} · ${driver.email}' : driver.email),
-              trailing: TextButton(
-                onPressed: () => _setAvatarUrl(context, ref),
-                child: const Text('Set photo URL'),
-              ),
-            ),
-          ),
+            );
+          },
         ),
         const SizedBox(height: 8),
         Card(

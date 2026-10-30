@@ -53,17 +53,18 @@ class JobsTabScreen extends ConsumerWidget {
         // before, the open-jobs list stays reachable even with active jobs
         // in progress, instead of being replaced by them.
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (activeJobs.isNotEmpty) ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                 child: Text(
-                  'Active Jobs',
+                  'Your jobs',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               SizedBox(
-                height: 168,
+                height: 152,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -165,12 +166,12 @@ class _DayJobsList extends StatelessWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: SizedBox(
                   height: constraints.maxHeight,
-                  child: Center(child: Text(emptyMessage)),
+                  child: _EmptyDay(message: emptyMessage),
                 ),
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               itemCount: jobs.length,
               itemBuilder: (context, index) {
                 final job = jobs[index];
@@ -182,6 +183,44 @@ class _DayJobsList extends StatelessWidget {
                 );
               },
             ),
+    );
+  }
+}
+
+/// Teaches what will appear here rather than just saying "nothing".
+class _EmptyDay extends StatelessWidget {
+  const _EmptyDay({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(color: c.secondaryContainer, shape: BoxShape.circle),
+              child: Icon(Icons.local_taxi_outlined, size: 30, color: c.onSecondaryContainer),
+            ),
+            const SizedBox(height: 16),
+            Text(message, style: t.titleMedium, textAlign: TextAlign.center),
+            const SizedBox(height: 6),
+            Text(
+              'New jobs appear here as soon as the operating centre releases them — '
+              "you'll get a notification. Pull down to refresh.",
+              style: t.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

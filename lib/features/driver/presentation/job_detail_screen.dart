@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/connectivity.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/route_block.dart';
 import 'widgets/call_operator_button.dart';
 import '../application/driver_providers.dart';
 import '../data/driver_repository.dart';
@@ -69,38 +71,90 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final job = widget.job;
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final pickup = toLondon(job.pickupDatetime);
+    final time = '${pickup.hour.toString().padLeft(2, '0')}:${pickup.minute.toString().padLeft(2, '0')}';
     return Scaffold(
-      appBar: AppBar(title: const Text('Job Details')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (job.bookingRef.isNotEmpty) _DetailRow(label: 'Booking', value: job.bookingRef),
-            _DetailRow(label: 'Pickup time', value: formatDateTime(job.pickupDatetime)),
-            _DetailRow(label: 'Pickup', value: job.pickupLocation),
-            _DetailRow(label: 'Dropoff', value: job.dropoffLocation),
-            _DetailRow(label: 'Passenger', value: job.customerName),
-            _DetailRow(label: 'Fare', value: formatCurrency(job.fare)),
-            if (job.notes != null && job.notes!.isNotEmpty)
-              _DetailRow(label: 'Notes', value: job.notes!),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _isAccepting || !isOnline(ref) ? null : _accept,
-                child: _isAccepting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Accept Job'),
+      appBar: AppBar(title: Text(job.bookingRef.isEmpty ? 'Job details' : job.bookingRef)),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(time, style: t.displaySmall?.copyWith(fontFeatures: tabularFigures)),
+                                  Text(formatDate(job.pickupDatetime), style: t.bodySmall),
+                                ],
+                              ),
+                            ),
+                            Text(formatCurrency(job.fare), style: t.headlineSmall?.copyWith(fontFeatures: tabularFigures)),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        RouteBlock(pickup: job.pickupLocation, dropoff: job.dropoffLocation, maxLines: null),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                    child: Column(
+                      children: [
+                        _DetailRow(label: 'Passenger', value: job.customerName),
+                        if (job.vehicleClass != null) _DetailRow(label: 'Vehicle', value: job.vehicleClass!),
+                        if (job.notes != null && job.notes!.isNotEmpty) _DetailRow(label: 'Notes', value: job.notes!),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const CallOperatorButton(),
+              ],
+            ),
+          ),
+          Material(
+            color: c.surfaceContainerLowest,
+            child: SafeArea(
+              top: false,
+              child: Container(
+                decoration: BoxDecoration(border: Border(top: BorderSide(color: c.outlineVariant))),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    style: AppTheme.primaryActionStyle(c),
+                    onPressed: _isAccepting || !isOnline(ref) ? null : _accept,
+                    child: _isAccepting
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                          )
+                        : const Text('Accept job'),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-            const CallOperatorButton(),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -114,14 +168,17 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: 2),
-          Text(value, style: Theme.of(context).textTheme.bodyLarge),
+          SizedBox(
+            width: 96,
+            child: Text(label, style: t.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ),
+          Expanded(child: Text(value, style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w700))),
         ],
       ),
     );

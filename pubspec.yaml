@@ -94,6 +94,22 @@ flutter:
     - assets/branding/logo.png
     - assets/branding/logo_dark.png
 
+  # Figtree — the tsminicab.com typeface (SIL OFL, assets/fonts/OFL.txt),
+  # bundled so the app never fetches fonts at runtime.
+  fonts:
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/Figtree-400.ttf
+          weight: 400
+        - asset: assets/fonts/Figtree-500.ttf
+          weight: 500
+        - asset: assets/fonts/Figtree-600.ttf
+          weight: 600
+        - asset: assets/fonts/Figtree-700.ttf
+          weight: 700
+        - asset: assets/fonts/Figtree-800.ttf
+          weight: 800
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

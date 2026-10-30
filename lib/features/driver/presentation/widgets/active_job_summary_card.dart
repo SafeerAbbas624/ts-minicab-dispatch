@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/models/job.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formatters.dart';
 import 'active_job_view.dart';
 
-/// Compact card for one of the driver's active jobs, shown in a horizontal
-/// strip at the top of the Jobs tab. Tapping it is expected to push
-/// [ActiveJobScreen] for the full step controls — same visual language as
-/// [JobCard] (rounded card, formatted time/route/fare) but with a status
-/// chip for the current step instead of a plain fare pill, since knowing
-/// *where in the trip* each active job is at a glance is the whole point
-/// of this card once a driver can hold more than one at once.
+/// One of the driver's current jobs in the strip at the top of the Jobs
+/// tab. Navy, so a job in hand reads differently from the open jobs below
+/// it at a glance; the orange marker is the current step. Tapping opens
+/// [ActiveJobScreen] with the step controls.
 class ActiveJobSummaryCard extends StatelessWidget {
   const ActiveJobSummaryCard({super.key, required this.job, this.onTap});
 
@@ -19,70 +17,81 @@ class ActiveJobSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = dark ? Brand.navy700 : Brand.navy800;
+    const fg = Colors.white;
+    final fgMuted = Colors.white.withValues(alpha: 0.72);
+    final pickup = toLondon(job.pickupDatetime);
+    final time = '${pickup.hour.toString().padLeft(2, '0')}:${pickup.minute.toString().padLeft(2, '0')}';
+
     return SizedBox(
-      width: 280,
-      child: Card(
+      width: 290,
+      child: Material(
+        color: bg,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: colors.primaryContainer,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          activeJobStepLabel(job.status),
-                          style: TextStyle(
-                            color: colors.onPrimaryContainer,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12.5,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: job.hasPendingCancellation ? const Color(0xFFFFB4AB) : Brand.orange,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Icon(Icons.chevron_right, color: colors.outline),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        job.hasPendingCancellation ? 'Cancellation under review' : activeJobStepLabel(job.status),
+                        style: t.labelMedium?.copyWith(color: fg, fontWeight: FontWeight.w700),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: fgMuted),
                   ],
                 ),
-                if (job.hasPendingCancellation)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Chip(
-                      label: const Text('Pending cancellation'),
-                      visualDensity: VisualDensity.compact,
-                      backgroundColor: colors.errorContainer,
-                      labelStyle: TextStyle(color: colors.onErrorContainer, fontSize: 11),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(time, style: t.headlineSmall?.copyWith(color: fg, fontFeatures: tabularFigures)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        job.bookingRef,
+                        style: t.labelMedium?.copyWith(color: fgMuted, fontFeatures: tabularFigures),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
+                    Text(
+                      formatCurrency(job.fare),
+                      style: t.titleSmall?.copyWith(color: fg, fontFeatures: tabularFigures),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 Text(
-                  formatDateTime(job.pickupDatetime),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${job.pickupLocation} → ${job.dropoffLocation}',
+                  job.pickupLocation,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium?.copyWith(color: fg),
                 ),
-                const SizedBox(height: 4),
                 Text(
-                  '${job.customerName} · ${formatCurrency(job.fare)}',
+                  'to ${job.dropoffLocation}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: t.bodySmall?.copyWith(color: fgMuted),
                 ),
               ],
             ),

@@ -30,7 +30,9 @@ class ResponsiveNavScaffold extends StatelessWidget {
 
   static const double desktopBreakpoint = 900;
 
-  final int selectedIndex;
+  /// Null when the screen showing has no destination of its own (e.g. the
+  /// Jobs FAB's Post Job form): the rail then highlights nothing.
+  final int? selectedIndex;
   final ValueChanged<int> onSelect;
   final List<NavItem> destinations;
   final Widget body;
@@ -54,7 +56,7 @@ class ResponsiveNavScaffold extends StatelessWidget {
             children: [
               Expanded(child: positionedContent),
               NavigationBar(
-                selectedIndex: selectedIndex,
+                selectedIndex: selectedIndex ?? 0,
                 onDestinationSelected: onSelect,
                 destinations: [
                   for (final d in destinations) NavigationDestination(icon: Icon(d.icon), label: d.label),

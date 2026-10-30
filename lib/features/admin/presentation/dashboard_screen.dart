@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/admin_models.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../application/admin_providers.dart';
+import 'widgets/needs_attention.dart';
 
 /// Renamed from Analytics — the default screen on admin launch. Every stat
 /// card is a shortcut into the tab (and sub-tab) that explains the number,
@@ -24,13 +26,28 @@ class DashboardScreen extends ConsumerWidget {
     final analyticsAsync = ref.watch(adminAnalyticsProvider);
 
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(adminAnalyticsProvider),
+      onRefresh: () async {
+        ref.invalidate(adminAnalyticsProvider);
+        ref.invalidate(adminJobsProvider('pending_approval'));
+        ref.invalidate(adminJobsProvider('open'));
+        ref.invalidate(adminDriversProvider(null));
+        ref.invalidate(adminCancellationRequestsProvider);
+      },
       child: analyticsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text(error.toString())),
         data: (analytics) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            NeedsAttention(
+              onGo: ({required int tab, int? jobsSub, int? driversSub}) =>
+                  _go(ref, tab: tab, jobsSub: jobsSub, driversSub: driversSub),
+            ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+              child: Text('Totals', style: Theme.of(context).textTheme.titleMedium),
+            ),
             // Confirmed 25 Aug (docs/BACKEND_REQUESTS.md item 8): GET
             // /admin/analytics deliberately excludes demo_admin/demo_driver
             // activity from every total below, unlike the Jobs/Payments
@@ -167,12 +184,31 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
     return Card(
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(label),
-        trailing: Text(value, style: Theme.of(context).textTheme.titleLarge),
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(value, style: t.headlineSmall?.copyWith(fontFeatures: tabularFigures)),
+                    const SizedBox(height: 2),
+                    Text(label, style: t.bodyMedium?.copyWith(color: c.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              Icon(icon, color: c.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -35,7 +35,7 @@ class JobsShellScreen extends ConsumerWidget {
     // that: nav position 0 = _tabs index 1, etc. Clamped so nothing throws
     // while the Post a Job screen itself is showing (index 0), where no nav
     // destination truly applies.
-    final navSelectedIndex = (index - 1).clamp(0, 4);
+    final navSelectedIndex = index == 0 ? null : (index - 1).clamp(0, 4);
     return ResponsiveNavScaffold(
       // Wider than the default 1100 — the desktop view here is a data table
       // + detail pane, not a single centered column, so it benefits from

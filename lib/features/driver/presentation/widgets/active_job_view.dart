@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/job.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/network/connectivity.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/route_block.dart';
+import '../../../../core/widgets/status_pill.dart';
 import '../../application/driver_providers.dart';
 import '../../application/location_sharing.dart';
 import 'call_operator_button.dart';
@@ -174,13 +177,13 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
   }
 
   static const List<(String, String, IconData, String, String?)> _steps = [
-    ('accepted', 'Start Job', Icons.play_circle_outline, 'en_route', null),
-    ('en_route', 'Arrived to Pickup', Icons.pin_drop, 'arrived', null),
-    ('arrived', 'Passenger On Board', Icons.person, 'passenger_on_board', null),
+    ('accepted', 'Start job', Icons.play_arrow_rounded, 'en_route', null),
+    ('en_route', 'Arrived at pickup', Icons.pin_drop_outlined, 'arrived', null),
+    ('arrived', 'Passenger on board', Icons.person_outline, 'passenger_on_board', null),
     (
       'passenger_on_board',
-      'Clear / Done',
-      Icons.check_circle,
+      'Complete job',
+      Icons.check_rounded,
       'completed',
       'Trip completed',
     ),
@@ -189,6 +192,8 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
   @override
   Widget build(BuildContext context) {
     final job = widget.job;
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
     final pendingCancellation = job.hasPendingCancellation;
     (String, String, IconData, String, String?)? matchedStep;
     for (final s in _steps) {
@@ -201,108 +206,232 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
     final online = isOnline(ref);
     final sharing = liveTrackingStatuses.contains(job.status) &&
         ref.watch(locationSharingProvider).sharingJobId == job.id;
+    final pickup = toLondon(job.pickupDatetime);
+    final time = '${pickup.hour.toString().padLeft(2, '0')}:${pickup.minute.toString().padLeft(2, '0')}';
+    final busy = _isSubmitting || pendingCancellation || !online;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return Column(
       children: [
-        if (pendingCancellation)
-          Card(
-            color: Theme.of(context).colorScheme.errorContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            children: [
+              if (pendingCancellation) ...[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: c.errorContainer, borderRadius: BorderRadius.circular(16)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.hourglass_top, color: c.onErrorContainer),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Cancellation under review by the operating centre. This job stays '
+                          'assigned to you until it is reviewed.',
+                          style: t.bodyMedium?.copyWith(color: c.onErrorContainer),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          StatusPill.job(job.status),
+                          const Spacer(),
+                          Text(
+                            job.bookingRef,
+                            style: t.labelLarge?.copyWith(color: c.onSurfaceVariant, fontFeatures: tabularFigures),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(time, style: t.displaySmall?.copyWith(fontFeatures: tabularFigures)),
+                      Text(formatDate(job.pickupDatetime), style: t.bodySmall),
+                      const SizedBox(height: 20),
+                      _StepTrack(status: job.status),
+                      const SizedBox(height: 20),
+                      RouteBlock(pickup: job.pickupLocation, dropoff: job.dropoffLocation, maxLines: null),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                  child: Column(
+                    children: [
+                      _Fact(icon: Icons.person_outline, label: 'Passenger', value: job.customerName),
+                      _Fact(icon: Icons.payments_outlined, label: 'Fare', value: formatCurrency(job.fare)),
+                      if (job.vehicleClass != null)
+                        _Fact(icon: Icons.directions_car_outlined, label: 'Vehicle', value: job.vehicleClass!),
+                      if (job.notes != null && job.notes!.isNotEmpty)
+                        _Fact(icon: Icons.sticky_note_2_outlined, label: 'Notes', value: job.notes!),
+                    ],
+                  ),
+                ),
+              ),
+              if (liveTrackingStatuses.contains(job.status)) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(
+                      sharing ? Icons.my_location : Icons.location_disabled,
+                      size: 18,
+                      color: sharing ? context.statusColors.onDone : c.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        sharing
+                            ? 'Sharing your live location with the passenger'
+                            : "Location not shared — the passenger can't see you on the map",
+                        style: t.bodySmall?.copyWith(color: c.onSurface),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 4),
+              const CallOperatorButton(),
+            ],
+          ),
+        ),
+        // The next step sits in a fixed tray at the bottom of the screen,
+        // within thumb reach, one button at a time. Strict server-side
+        // sequence (confirmed live 26 Aug) matches _steps above exactly.
+        Material(
+          color: c.surfaceContainerLowest,
+          child: SafeArea(
+            top: false,
+            child: Container(
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: c.outlineVariant))),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.hourglass_top, color: Theme.of(context).colorScheme.onErrorContainer),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Pending cancellation — awaiting admin review. This job stays '
-                      'assigned to you until reviewed.',
-                      style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                  if (step != null)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: AppTheme.primaryActionStyle(c),
+                        onPressed: busy ? null : () => _advanceTo(step.$4, successMessage: step.$5),
+                        icon: _isSubmitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                              )
+                            : Icon(step.$3, size: 26),
+                        label: Text(step.$2),
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      style: TextButton.styleFrom(foregroundColor: c.error),
+                      onPressed: busy ? null : _cantComplete,
+                      child: const Text("Can't complete this job"),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-        if (pendingCancellation) const SizedBox(height: 12),
-        Card(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  job.bookingRef.isEmpty ? 'Active Job' : 'Active Job · ${job.bookingRef}',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  activeJobStepLabel(job.status),
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: Theme.of(context).colorScheme.outline),
-                ),
-                const SizedBox(height: 8),
-                Text(formatDateTime(job.pickupDatetime)),
-                const SizedBox(height: 4),
-                Text('${job.pickupLocation} → ${job.dropoffLocation}'),
-                const SizedBox(height: 4),
-                Text('Passenger: ${job.customerName}'),
-                const SizedBox(height: 4),
-                Text(formatCurrency(job.fare)),
-                if (job.notes != null && job.notes!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text('Notes: ${job.notes}'),
-                ],
-              ],
-            ),
-          ),
         ),
-        if (liveTrackingStatuses.contains(job.status)) ...[
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(sharing ? Icons.my_location : Icons.location_disabled,
-                  size: 18, color: sharing ? Colors.green : Theme.of(context).colorScheme.error),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(sharing
-                    ? 'Sharing your live location with the passenger'
-                    : 'Location not shared — passenger can\'t see you on the map'),
-              ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 24),
-        // Start Job -> Arrived to Pickup -> Passenger On Board -> Clear/Done,
-        // one button visible at a time for whichever step comes next.
-        // Confirmed live 26 Aug: strict server-side sequence, matches _steps
-        // above exactly.
-        if (step != null)
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _isSubmitting || pendingCancellation || !online
-                  ? null
-                  : () => _advanceTo(step.$4, successMessage: step.$5),
-              icon: Icon(step.$3),
-              label: Text(step.$2),
-            ),
-          ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: _isSubmitting || pendingCancellation || !online ? null : _cantComplete,
-            child: const Text("Can't complete"),
-          ),
-        ),
-        const SizedBox(height: 12),
-        const CallOperatorButton(),
       ],
+    );
+  }
+}
+
+/// Assigned → On the way → Arrived → On board, the current step in orange.
+class _StepTrack extends StatelessWidget {
+  const _StepTrack({required this.status});
+
+  final String status;
+
+  static const _labels = ['Assigned', 'On the way', 'Arrived', 'On board'];
+  static const _order = ['accepted', 'en_route', 'arrived', 'passenger_on_board'];
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final current = _order.indexOf(status);
+
+    return Semantics(
+      label: 'Progress: ${current >= 0 ? _labels[current] : status}',
+      excludeSemantics: true,
+      child: Row(
+        children: [
+          for (var i = 0; i < _labels.length; i++)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 5,
+                    margin: EdgeInsets.only(right: i == _labels.length - 1 ? 0 : 4),
+                    decoration: BoxDecoration(
+                      color: i < current
+                          ? c.primary
+                          : i == current
+                              ? c.tertiary
+                              : c.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _labels[i],
+                    style: t.labelSmall?.copyWith(
+                      color: i <= current ? c.onSurface : c.onSurfaceVariant,
+                      fontWeight: i == current ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Fact extends StatelessWidget {
+  const _Fact({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: c.onSurfaceVariant),
+          const SizedBox(width: 12),
+          SizedBox(width: 84, child: Text(label, style: t.bodyMedium?.copyWith(color: c.onSurfaceVariant))),
+          Expanded(child: Text(value, style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w700))),
+        ],
+      ),
     );
   }
 }
