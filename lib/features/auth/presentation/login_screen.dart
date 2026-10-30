@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/widgets/brand_logo.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -56,13 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: Image.asset(
-                        'assets/branding/logo.png',
-                        height: 96,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
+                    const Center(child: BrandLogo(height: 96)),
                     const SizedBox(height: 16),
                     Text('Sign in to continue', style: Theme.of(context).textTheme.bodyMedium),
                     const SizedBox(height: 32),

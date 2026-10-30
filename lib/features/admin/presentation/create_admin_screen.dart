@@ -13,12 +13,14 @@ class CreateAdminScreen extends ConsumerStatefulWidget {
 
 class _CreateAdminScreenState extends ConsumerState<CreateAdminScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSaving = false;
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -31,6 +33,7 @@ class _CreateAdminScreenState extends ConsumerState<CreateAdminScreen> {
       await ref.read(adminRepositoryProvider).createAdmin(
             email: _emailController.text.trim(),
             password: _passwordController.text,
+            displayName: _nameController.text.trim(),
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -57,6 +60,16 @@ class _CreateAdminScreenState extends ConsumerState<CreateAdminScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                TextFormField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Dispatcher name',
+                    helperText: 'Shown to passengers as "Your dispatcher" and in the booking audit log',
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,

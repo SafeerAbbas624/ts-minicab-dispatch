@@ -26,6 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>While you're on a job (from "Start Job" until you complete it), TS Minicab shares your location with that job's passenger so they can see you arriving. Location is never shared at any other time.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Used to photograph documents (licence, insurance, DBS) and transaction slips for upload.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -56,6 +62,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>location</string>
 	</array>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<true/>

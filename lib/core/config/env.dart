@@ -5,4 +5,11 @@ class Env {
     'API_BASE_URL',
     defaultValue: 'https://api.tsminicab.com',
   );
+
+  /// Where the passenger's private tracking / manage-booking page lives
+  /// (`tsminicab.com/track/<token>`) — staging builds point at the staging site.
+  static const String trackingBaseUrl = String.fromEnvironment(
+    'TRACKING_BASE_URL',
+    defaultValue: 'https://tsminicab.com/track',
+  );
 }

@@ -21,6 +21,7 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
   late final TextEditingController _dropoffLocationController;
   late final TextEditingController _customerNameController;
   late final TextEditingController _customerContactController;
+  late final TextEditingController _customerEmailController;
   late final TextEditingController _fareController;
   late final TextEditingController _notesController;
   late DateTime _pickupDatetime;
@@ -35,6 +36,7 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
     _dropoffLocationController = TextEditingController(text: job.dropoffLocation);
     _customerNameController = TextEditingController(text: job.customerName);
     _customerContactController = TextEditingController(text: job.customerContact);
+    _customerEmailController = TextEditingController(text: job.customerEmail);
     _fareController = TextEditingController(text: job.fare.toString());
     _notesController = TextEditingController(text: job.notes ?? '');
     _pickupDatetime = job.pickupDatetime;
@@ -70,6 +72,7 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
     _dropoffLocationController.dispose();
     _customerNameController.dispose();
     _customerContactController.dispose();
+    _customerEmailController.dispose();
     _fareController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -88,6 +91,7 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
         'dropoff_address': _dropoffLocationController.text.trim(),
         'customer_name': _customerNameController.text.trim(),
         'customer_contact': _customerContactController.text.trim(),
+        'customer_email': _customerEmailController.text.trim(),
         'fare_amount': double.parse(_fareController.text.trim()),
         'vehicle_class_requested': _vehicleClass,
         'notes': _notesController.text.trim(),
@@ -144,6 +148,14 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
                   controller: _customerContactController,
                   decoration: const InputDecoration(labelText: 'Customer contact'),
                   validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _customerEmailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'Customer email'),
+                  validator: (v) =>
+                      (v != null && v.trim().isNotEmpty && !v.contains('@')) ? 'Enter a valid email' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

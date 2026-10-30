@@ -1,12 +1,24 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../core/utils/csv_export.dart';
+import '../../../core/utils/formatters.dart';
 import '../data/admin_repository.dart';
+
+const _tflColumnLabels = {
+  'booking_ref': 'Booking',
+  'booked_at': 'Booked at',
+  'pickup_datetime': 'Pickup',
+  'status': 'Status',
+  'call_sign': 'Call sign',
+  'driver_licence_number': 'Driver licence',
+  'forename': 'Forename',
+  'surname': 'Surname',
+  'vehicle_licence_number': 'Vehicle licence',
+  'vrm': 'VRM',
+  'make': 'Make',
+};
 
 DateTime _mostRecentMonday(DateTime from) => from.subtract(Duration(days: from.weekday - 1));
 
@@ -62,15 +74,9 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
     try {
       final bytes =
           await ref.read(adminRepositoryProvider).fetchTflExportCsv(weekStart: _weekStart);
-      final dir = await getTemporaryDirectory();
-      final weekLabel =
-          '${_weekStart.year}-${_weekStart.month.toString().padLeft(2, '0')}-${_weekStart.day.toString().padLeft(2, '0')}';
-      final file = File('${dir.path}/tfl-export-$weekLabel.csv');
-      await file.writeAsBytes(bytes);
+      final weekLabel = dateOnly(_weekStart);
       if (!mounted) return;
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)], subject: 'TfL export $weekLabel'),
-      );
+      await shareCsv(bytes, 'tfl-export-$weekLabel.csv', subject: 'TfL export $weekLabel');
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -130,16 +136,25 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
     final rows = _rows ?? [];
     if (rows.isEmpty) return const Center(child: Text('No data for this week'));
 
-    final columns = rows.first.keys.toList();
+    final columns = rows.first.keys.where((c) => c != 'job_id').toList();
+    String cell(String column, dynamic value) {
+      if (value == null) return '';
+      if (column.endsWith('_at') || column.endsWith('_datetime')) {
+        final dt = DateTime.tryParse(value.toString());
+        if (dt != null) return formatDateTime(dt.toLocal());
+      }
+      return '$value';
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          columns: columns.map((c) => DataColumn(label: Text(c))).toList(),
+          columns: columns.map((c) => DataColumn(label: Text(_tflColumnLabels[c] ?? c))).toList(),
           rows: rows
               .map(
                 (row) => DataRow(
-                  cells: columns.map((c) => DataCell(Text('${row[c] ?? ''}'))).toList(),
+                  cells: columns.map((c) => DataCell(Text(cell(c, row[c])))).toList(),
                 ),
               )
               .toList(),

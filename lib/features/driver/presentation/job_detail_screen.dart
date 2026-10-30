@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/network/connectivity.dart';
 import '../../../core/utils/formatters.dart';
+import 'widgets/call_operator_button.dart';
 import '../application/driver_providers.dart';
 import '../data/driver_repository.dart';
 
@@ -73,11 +75,11 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (job.bookingRef.isNotEmpty) _DetailRow(label: 'Booking', value: job.bookingRef),
             _DetailRow(label: 'Pickup time', value: formatDateTime(job.pickupDatetime)),
             _DetailRow(label: 'Pickup', value: job.pickupLocation),
             _DetailRow(label: 'Dropoff', value: job.dropoffLocation),
-            _DetailRow(label: 'Customer', value: job.customerName),
-            _DetailRow(label: 'Contact', value: job.customerContact),
+            _DetailRow(label: 'Passenger', value: job.customerName),
             _DetailRow(label: 'Fare', value: formatCurrency(job.fare)),
             if (job.notes != null && job.notes!.isNotEmpty)
               _DetailRow(label: 'Notes', value: job.notes!),
@@ -85,7 +87,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: _isAccepting ? null : _accept,
+                onPressed: _isAccepting || !isOnline(ref) ? null : _accept,
                 child: _isAccepting
                     ? const SizedBox(
                         width: 20,
@@ -95,6 +97,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                     : const Text('Accept Job'),
               ),
             ),
+            const SizedBox(height: 12),
+            const CallOperatorButton(),
           ],
         ),
       ),

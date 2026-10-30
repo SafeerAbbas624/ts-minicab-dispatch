@@ -11,6 +11,7 @@ import '../data/driver_repository.dart';
 import 'bank_details_screen.dart';
 import 'delete_account_screen.dart';
 import 'documents_screen.dart';
+import 'profile_screen.dart';
 
 class DriverSettingsScreen extends ConsumerWidget {
   const DriverSettingsScreen({super.key});
@@ -116,7 +117,7 @@ class DriverSettingsScreen extends ConsumerWidget {
                 child: driver.avatarUrl == null ? const Icon(Icons.person) : null,
               ),
               title: Text(driver.fullName),
-              subtitle: Text(driver.email),
+              subtitle: Text(driver.callSign != null ? 'Call sign ${driver.callSign} · ${driver.email}' : driver.email),
               trailing: TextButton(
                 onPressed: () => _setAvatarUrl(context, ref),
                 child: const Text('Set photo URL'),
@@ -128,6 +129,15 @@ class DriverSettingsScreen extends ConsumerWidget {
         Card(
           child: Column(
             children: [
+              ListTile(
+                leading: const Icon(Icons.badge_outlined),
+                title: const Text('My details & vehicle'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                ),
+              ),
+              const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.description_outlined),
                 title: const Text('Documents'),

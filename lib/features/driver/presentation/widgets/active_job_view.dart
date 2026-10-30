@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/models/job.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/network/connectivity.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../application/driver_providers.dart';
+import '../../application/location_sharing.dart';
+import 'call_operator_button.dart';
 import '../../data/driver_repository.dart';
 
 const _activeJobStatusLabels = {
@@ -42,6 +45,18 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
   /// 409s if called out of order, so there's no risk of this skipping a
   /// step even if tapped twice quickly).
   Future<void> _advanceTo(String status, {String? successMessage}) async {
+    // Starting the job turns on live tracking for the passenger — ask for
+    // location first (with the in-app disclosure). The job can still start
+    // without it; the passenger just won't see the map.
+    if (status == 'en_route') {
+      final granted = await ensureLocationPermission(context);
+      if (!granted && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Location is off — your passenger won\'t see you on the map.'),
+        ));
+      }
+      if (!mounted) return;
+    }
     setState(() => _isSubmitting = true);
     try {
       await ref.read(driverRepositoryProvider).updateJobStatus(widget.job.id, status: status);
@@ -183,6 +198,9 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
       }
     }
     final step = matchedStep;
+    final online = isOnline(ref);
+    final sharing = liveTrackingStatuses.contains(job.status) &&
+        ref.watch(locationSharingProvider).sharingJobId == job.id;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -215,7 +233,10 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Active Job', style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  job.bookingRef.isEmpty ? 'Active Job' : 'Active Job · ${job.bookingRef}',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
                 const SizedBox(height: 4),
                 Text(
                   activeJobStepLabel(job.status),
@@ -229,7 +250,7 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
                 const SizedBox(height: 4),
                 Text('${job.pickupLocation} → ${job.dropoffLocation}'),
                 const SizedBox(height: 4),
-                Text('${job.customerName} · ${job.customerContact}'),
+                Text('Passenger: ${job.customerName}'),
                 const SizedBox(height: 4),
                 Text(formatCurrency(job.fare)),
                 if (job.notes != null && job.notes!.isNotEmpty) ...[
@@ -240,6 +261,21 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
             ),
           ),
         ),
+        if (liveTrackingStatuses.contains(job.status)) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(sharing ? Icons.my_location : Icons.location_disabled,
+                  size: 18, color: sharing ? Colors.green : Theme.of(context).colorScheme.error),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(sharing
+                    ? 'Sharing your live location with the passenger'
+                    : 'Location not shared — passenger can\'t see you on the map'),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 24),
         // Start Job -> Arrived to Pickup -> Passenger On Board -> Clear/Done,
         // one button visible at a time for whichever step comes next.
@@ -249,7 +285,7 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: _isSubmitting || pendingCancellation
+              onPressed: _isSubmitting || pendingCancellation || !online
                   ? null
                   : () => _advanceTo(step.$4, successMessage: step.$5),
               icon: Icon(step.$3),
@@ -260,10 +296,12 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
-            onPressed: _isSubmitting || pendingCancellation ? null : _cantComplete,
+            onPressed: _isSubmitting || pendingCancellation || !online ? null : _cantComplete,
             child: const Text("Can't complete"),
           ),
         ),
+        const SizedBox(height: 12),
+        const CallOperatorButton(),
       ],
     );
   }

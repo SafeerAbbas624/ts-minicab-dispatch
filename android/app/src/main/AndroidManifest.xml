@@ -1,4 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Live driver location for the passenger's tracking page — only while
+         a job is under way (en route → passenger on board), shown to the
+         driver as an ongoing "Sharing your location" notification via
+         geolocator's foreground service. "While using the app" permission
+         only: no background-location (ACCESS_BACKGROUND_LOCATION) needed,
+         since the foreground service is started while the app is open. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <application
         android:label="TS Minicab"
         android:name="${applicationName}"
@@ -50,6 +60,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- "Call operating centre" button (url_launcher tel:). -->
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
         </intent>
     </queries>
 </manifest>

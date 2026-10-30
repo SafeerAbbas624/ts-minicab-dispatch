@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/connectivity.dart';
+import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/responsive_nav_scaffold.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/admin_providers.dart';
 import 'action_log_screen.dart';
 import 'admin_settings_screen.dart';
-import 'create_admin_screen.dart';
+import 'admins_screen.dart';
+import 'audit_log_screen.dart';
 import 'dashboard_screen.dart';
 import 'drivers_shell_screen.dart';
 import 'jobs_shell_screen.dart';
@@ -23,6 +26,7 @@ class AdminShell extends ConsumerWidget {
     'Payments',
     'TfL Export',
     'Action Logs',
+    'Booking Audit Log',
     'Settings',
   ];
 
@@ -33,6 +37,7 @@ class AdminShell extends ConsumerWidget {
     PaymentsShellScreen(),
     TflExportScreen(),
     ActionLogScreen(),
+    AuditLogScreen(),
     AdminSettingsScreen(),
   ];
 
@@ -43,6 +48,7 @@ class AdminShell extends ConsumerWidget {
     Icons.payments_outlined,
     Icons.directions_car_outlined,
     Icons.receipt_long_outlined,
+    Icons.timer_outlined,
     Icons.settings_outlined,
   ];
 
@@ -70,23 +76,18 @@ class AdminShell extends ConsumerWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Colors.white),
+          DrawerHeader(
             child: Align(
               alignment: Alignment.bottomLeft,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Image(
-                    image: AssetImage('assets/branding/logo.png'),
-                    height: 56,
-                    fit: BoxFit.contain,
-                  ),
-                  SizedBox(height: 4),
+                  const BrandLogo(height: 56),
+                  const SizedBox(height: 4),
                   Text(
                     'Admin panel',
-                    style: TextStyle(color: Color(0xFF0B5FFF), fontSize: 14),
+                    style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                   ),
                 ],
               ),
@@ -102,8 +103,8 @@ class AdminShell extends ConsumerWidget {
           if (isSuperAdmin)
             ListTile(
               leading: const Icon(Icons.admin_panel_settings_outlined),
-              title: const Text('Create Admin'),
-              onTap: () => closeDrawerThenPush(const CreateAdminScreen()),
+              title: const Text('Admins'),
+              onTap: () => closeDrawerThenPush(const AdminsScreen()),
             ),
           const Divider(),
           ListTile(
@@ -122,7 +123,8 @@ class AdminShell extends ConsumerWidget {
       constraints: BoxConstraints(maxWidth: isDesktop ? 1100 : double.infinity),
       child: IndexedStack(index: index, children: _screens),
     );
-    final body = isDesktop ? Align(alignment: Alignment.topCenter, child: content) : content;
+    final aligned = isDesktop ? Align(alignment: Alignment.topCenter, child: content) : content;
+    final body = Column(children: [const OfflineBanner(), Expanded(child: aligned)]);
 
     return Scaffold(
       appBar: AppBar(title: Text(_titles[index])),

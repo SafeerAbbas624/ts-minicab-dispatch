@@ -1,3 +1,5 @@
+import 'driver.dart';
+
 // Decimal fields are plain JSON numbers as of the backend's normalization
 // fix — this also tolerates a numeric string defensively.
 double _parseAmount(dynamic value) {
@@ -15,6 +17,9 @@ class AdminDriverSummary {
     required this.status,
     required this.accountStatus,
     this.phoneNumber,
+    this.callSign,
+    this.compliance,
+    this.vehicle,
   });
 
   /// Confirmed against the backend's own generated API reference: the id
@@ -35,6 +40,11 @@ class AdminDriverSummary {
       status: json['approval_status'] as String? ?? 'pending',
       accountStatus: json['status'] as String? ?? 'active',
       phoneNumber: json['phone_number'] as String?,
+      callSign: json['call_sign'] as String?,
+      compliance: json['compliance'] is Map<String, dynamic>
+          ? DriverCompliance.fromJson(json['compliance'] as Map<String, dynamic>)
+          : null,
+      vehicle: Vehicle.activeFrom(json['vehicles'] as List?),
     );
   }
 
@@ -45,8 +55,74 @@ class AdminDriverSummary {
   final String status;
   final String accountStatus;
   final String? phoneNumber;
+  final String? callSign;
+  final DriverCompliance? compliance;
+  final Vehicle? vehicle;
 
   String get fullName => '$forename $surname'.trim();
+}
+
+/// An operator account (admin / super_admin). `displayName` is what
+/// passengers see as "Your dispatcher" and what the audit log shows.
+class AdminUser {
+  AdminUser({required this.id, required this.email, required this.role, this.displayName, this.createdAt});
+
+  factory AdminUser.fromJson(Map<String, dynamic> json) => AdminUser(
+        id: json['id'].toString(),
+        email: json['email'] as String? ?? '',
+        role: json['role'] as String? ?? 'admin',
+        displayName: json['display_name'] as String?,
+        createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
+      );
+
+  final String id;
+  final String email;
+  final String role;
+  final String? displayName;
+  final DateTime? createdAt;
+
+  bool get isSuperAdmin => role == 'super_admin';
+  String get label => displayName?.isNotEmpty == true ? displayName! : email;
+}
+
+/// One row of the booking audit log (`GET /admin/audit-log`) — every step
+/// of every booking with a millisecond timestamp, as TfL's demonstration
+/// guidance asks for. `timestampDisplay` is already formatted server-side
+/// in London time ("dd/mm/yyyy hh:mm:ss.mmm").
+class AuditLogEntry {
+  AuditLogEntry({
+    required this.id,
+    required this.timestamp,
+    required this.timestampDisplay,
+    required this.bookingRef,
+    required this.jobId,
+    required this.eventType,
+    required this.eventLabel,
+    required this.actor,
+    this.note,
+  });
+
+  factory AuditLogEntry.fromJson(Map<String, dynamic> json) => AuditLogEntry(
+        id: json['id'].toString(),
+        timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),
+        timestampDisplay: json['timestamp_display'] as String? ?? '',
+        bookingRef: json['booking_ref'] as String? ?? '',
+        jobId: json['job_id'].toString(),
+        eventType: json['event_type'] as String? ?? '',
+        eventLabel: json['event_label'] as String? ?? '',
+        actor: json['actor'] as String? ?? '',
+        note: json['note'] as String?,
+      );
+
+  final String id;
+  final DateTime timestamp;
+  final String timestampDisplay;
+  final String bookingRef;
+  final String jobId;
+  final String eventType;
+  final String eventLabel;
+  final String actor;
+  final String? note;
 }
 
 class DriverNote {

@@ -23,6 +23,10 @@ class Job {
     this.payment,
     this.vehicleClass,
     this.cancellationRequests = const [],
+    this.bookingRef = '',
+    this.bookedAt,
+    this.customerEmail,
+    this.trackingToken,
   });
 
   /// Field names are camelCase on the wire (`pickupDatetime`, `pickupAddress`,
@@ -54,6 +58,10 @@ class Job {
           .cast<Map<String, dynamic>>()
           .map(CancellationRequest.fromJson)
           .toList(),
+      bookingRef: json['bookingRef'] as String? ?? '',
+      bookedAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
+      customerEmail: json['customerEmail'] as String?,
+      trackingToken: json['trackingToken'] as String?,
     );
   }
 
@@ -71,6 +79,20 @@ class Job {
   final String? acceptedByDriverId;
   final Payment? payment;
   final List<CancellationRequest> cancellationRequests;
+
+  /// Short reference ("TS-10001") derived server-side from the job's
+  /// sequence number — shown everywhere instead of the uuid.
+  final String bookingRef;
+
+  /// When the booking was made (Job.createdAt) — distinct from
+  /// [pickupDatetime], the time of the journey itself.
+  final DateTime? bookedAt;
+
+  /// Admin-only: the driver API strips the passenger's phone, email and
+  /// tracking token (TfL: no direct passenger↔driver contact), so these are
+  /// empty/null in the driver app.
+  final String? customerEmail;
+  final String? trackingToken;
 
   /// The job's own status stays accepted/arrived throughout a pending
   /// cancellation review — this is the only signal that one exists.

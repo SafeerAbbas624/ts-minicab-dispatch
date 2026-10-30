@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/driver.dart';
 import '../../../core/models/job.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/providers/core_providers.dart';
 
 class DriverRepository {
@@ -27,6 +28,32 @@ class DriverRepository {
     await _client.patch('/drivers/me', data: data);
   }
 
+  /// Personal details for TfL licensing. Only keys present are changed;
+  /// the NI number is encrypted server-side.
+  Future<void> updateProfile(Map<String, dynamic> changes) =>
+      _client.patch('/drivers/me/profile', data: changes);
+
+  /// Creates or updates the driver's one active vehicle.
+  Future<void> saveVehicle(Map<String, dynamic> vehicle) => _client.put('/drivers/me/vehicle', data: vehicle);
+
+  /// Live location while a job is under way — feeds the passenger's
+  /// tracking page. The backend ignores it outside en_route → on board.
+  Future<void> sendLocation(
+    String jobId, {
+    required double lat,
+    required double lng,
+    double? heading,
+    double? speed,
+    double? accuracy,
+  }) =>
+      _client.post('/jobs/$jobId/location', data: {
+        'lat': lat,
+        'lng': lng,
+        'heading': ?heading,
+        'speed': ?speed,
+        'accuracy': ?accuracy,
+      });
+
   /// Confirmed via the backend's own API reference: bank details are stored
   /// as one encrypted free-text string under `bank_account_details`, and
   /// this is the exact request shape — no need to guess.
@@ -44,7 +71,8 @@ class DriverRepository {
     final formData = FormData.fromMap({
       'document_type': documentType,
       'file': await MultipartFile.fromFile(file.path),
-      if (expiryDate != null) 'expiry_date': expiryDate.toUtc().toIso8601String(),
+      // Date only — an expiry is a calendar day, not an instant.
+      if (expiryDate != null) 'expiry_date': dateOnly(expiryDate),
     });
     await _client.postMultipart('/drivers/me/documents', formData);
   }

@@ -33,9 +33,9 @@ class PendingApprovalView extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              "Haven't uploaded your documents yet? Go to Settings > Documents "
-              "to upload them — we can't approve your account until we've "
-              'reviewed them.',
+              'To be approved, complete Settings > My details & vehicle and '
+              'upload every required document in Settings > Documents — we '
+              "can't approve your account until we've reviewed them.",
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium

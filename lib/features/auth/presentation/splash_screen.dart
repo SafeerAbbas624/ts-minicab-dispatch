@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/brand_logo.dart';
+
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
@@ -10,11 +12,7 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image(
-              image: AssetImage('assets/branding/logo.png'),
-              height: 120,
-              fit: BoxFit.contain,
-            ),
+            BrandLogo(height: 120),
             SizedBox(height: 24),
             CircularProgressIndicator(),
           ],

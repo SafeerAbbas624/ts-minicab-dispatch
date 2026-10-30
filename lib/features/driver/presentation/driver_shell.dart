@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/connectivity.dart';
 import '../../../core/widgets/responsive_nav_scaffold.dart';
 import '../application/driver_providers.dart';
+import '../application/location_sharing.dart';
 import 'earnings_screen.dart';
 import 'job_history_screen.dart';
 import 'jobs_tab_screen.dart';
@@ -30,9 +32,34 @@ class DriverShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final index = ref.watch(driverTabIndexProvider);
+
+    // Live location follows the driver's jobs: on from "Start Job" until the
+    // job is completed or handed back, off otherwise.
+    ref.listen(activeJobsProvider, (_, next) {
+      next.whenData((jobs) => ref.read(locationSharingProvider).syncWith(liveTrackingJob(jobs)));
+    });
+    // Back online: pull fresh state rather than trusting what was on screen.
+    ref.listen(isOnlineProvider, (prev, next) {
+      if (prev?.valueOrNull == false && next.valueOrNull == true) {
+        ref.invalidate(openJobsProvider);
+        ref.invalidate(myJobsProvider);
+        ref.invalidate(activeJobsProvider);
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(title: Text(_titles[index])),
-      body: ResponsiveNavScaffold(
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(child: _nav(index, ref)),
+        ],
+      ),
+    );
+  }
+
+  Widget _nav(int index, WidgetRef ref) {
+    return ResponsiveNavScaffold(
         selectedIndex: index,
         onSelect: (i) => ref.read(driverTabIndexProvider.notifier).state = i,
         destinations: const [
@@ -42,7 +69,6 @@ class DriverShell extends ConsumerWidget {
           NavItem(icon: Icons.settings_outlined, label: 'Settings'),
         ],
         body: IndexedStack(index: index, children: _tabs),
-      ),
     );
   }
 }

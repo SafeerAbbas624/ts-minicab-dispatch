@@ -18,6 +18,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
   final _dropoffLocationController = TextEditingController();
   final _customerNameController = TextEditingController();
   final _customerContactController = TextEditingController();
+  final _customerEmailController = TextEditingController();
   final _fareController = TextEditingController();
   final _notesController = TextEditingController();
   DateTime? _pickupDatetime;
@@ -30,6 +31,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
     _dropoffLocationController.dispose();
     _customerNameController.dispose();
     _customerContactController.dispose();
+    _customerEmailController.dispose();
     _fareController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -63,6 +65,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
     _dropoffLocationController.clear();
     _customerNameController.clear();
     _customerContactController.clear();
+    _customerEmailController.clear();
     _fareController.clear();
     _notesController.clear();
     setState(() {
@@ -86,6 +89,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
             dropoffLocation: _dropoffLocationController.text.trim(),
             customerName: _customerNameController.text.trim(),
             customerContact: _customerContactController.text.trim(),
+            customerEmail: _customerEmailController.text.trim(),
             fare: double.parse(_fareController.text.trim()),
             vehicleClass: _vehicleClass,
             notes: _notesController.text.trim(),
@@ -144,6 +148,17 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
                   controller: _customerContactController,
                   decoration: const InputDecoration(labelText: 'Customer contact'),
                   validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _customerEmailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Customer email (recommended)',
+                    helperText: 'Booking confirmation, driver details 1 hour before pickup and the live tracking link go here',
+                  ),
+                  validator: (v) =>
+                      (v != null && v.trim().isNotEmpty && !v.contains('@')) ? 'Enter a valid email' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../application/admin_providers.dart';
+import '../data/admin_repository.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/presentation/forgot_password_screen.dart';
 import '../../auth/presentation/privacy_policy_screen.dart';
@@ -10,13 +13,53 @@ import '../../auth/presentation/terms_conditions_screen.dart';
 class AdminSettingsScreen extends ConsumerWidget {
   const AdminSettingsScreen({super.key});
 
+  Future<void> _editName(BuildContext context, WidgetRef ref, String? current) async {
+    final controller = TextEditingController(text: current);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Dispatcher name'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(labelText: 'Name shown to passengers'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty) return;
+    try {
+      await ref.read(adminRepositoryProvider).updateMyDisplayName(name);
+      ref.invalidate(adminMeProvider);
+    } on ApiException catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeControllerProvider);
+    final me = ref.watch(adminMeProvider).valueOrNull;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.badge_outlined),
+            title: Text(me?.displayName ?? 'Set your dispatcher name'),
+            subtitle: Text(
+              me == null ? '' : '${me.email} · shown to passengers as "Your dispatcher" and in the booking audit log',
+            ),
+            trailing: const Icon(Icons.edit_outlined),
+            onTap: me == null ? null : () => _editName(context, ref, me.displayName),
+          ),
+        ),
+        const SizedBox(height: 8),
         Card(
           child: RadioGroup<ThemeMode>(
             groupValue: themeMode,

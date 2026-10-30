@@ -39,13 +39,17 @@ final adminAnalyticsProvider = FutureProvider.autoDispose<AdminAnalytics>((ref) 
   return ref.watch(adminRepositoryProvider).fetchAnalytics();
 });
 
+final adminMeProvider = FutureProvider.autoDispose<AdminUser>((ref) {
+  return ref.watch(adminRepositoryProvider).fetchMe();
+});
+
 final adminActionLogProvider = FutureProvider.autoDispose<List<ActionLogEntry>>((ref) {
   return ref.watch(adminRepositoryProvider).fetchActionLog();
 });
 
 /// Which top-level drawer destination is showing. Index order matches
 /// AdminShell's screen list: Dashboard, Jobs, Drivers, Payments, TfL Export,
-/// Action Logs, Settings. Held as shared state (not local widget state) so
+/// Action Logs, Booking Audit Log, Settings. Held as shared state (not local widget state) so
 /// Dashboard's stat cards can jump straight to a tab — and a sub-tab inside
 /// it — from outside AdminShell's own widget tree.
 final adminTabIndexProvider = StateProvider<int>((ref) => 0);

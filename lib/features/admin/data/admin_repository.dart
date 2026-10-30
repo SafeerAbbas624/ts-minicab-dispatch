@@ -37,10 +37,44 @@ class AdminRepository {
   Future<void> addDriverNote(String driverId, String noteText) =>
       _client.post('/admin/drivers/$driverId/notes', data: {'note_text': noteText});
 
+  /// Same snake_case body as the driver's own `PATCH /drivers/me/profile`;
+  /// only keys present are changed.
+  Future<void> updateDriverProfile(String driverId, Map<String, dynamic> changes) =>
+      _client.patch('/admin/drivers/$driverId', data: changes);
+
+  Future<void> updateDriverVehicle(String driverId, Map<String, dynamic> vehicle) =>
+      _client.put('/admin/drivers/$driverId/vehicle', data: vehicle);
+
+  Future<void> setDocumentExpiry(String driverId, String documentId, DateTime? expiry) =>
+      _client.patch('/admin/drivers/$driverId/documents/$documentId', data: {
+        'expiry_date': expiry == null ? null : _dateOnly(expiry),
+      });
+
   // Admins
 
-  Future<void> createAdmin({required String email, required String password}) =>
-      _client.post('/admin/admins', data: {'email': email, 'password': password});
+  Future<AdminUser> fetchMe() async {
+    final res = await _client.get('/admin/me');
+    return AdminUser.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<void> updateMyDisplayName(String displayName) =>
+      _client.patch('/admin/me', data: {'display_name': displayName});
+
+  /// super_admin only.
+  Future<List<AdminUser>> fetchAdmins() async {
+    final res = await _client.get('/admin/admins');
+    return (res.data as List).cast<Map<String, dynamic>>().map(AdminUser.fromJson).toList();
+  }
+
+  Future<void> createAdmin({required String email, required String password, String? displayName}) =>
+      _client.post('/admin/admins', data: {
+        'email': email,
+        'password': password,
+        if (displayName != null && displayName.isNotEmpty) 'display_name': displayName,
+      });
+
+  Future<void> renameAdmin(String adminId, String displayName) =>
+      _client.patch('/admin/admins/$adminId', data: {'display_name': displayName});
 
   Future<void> deleteAdmin(String adminId) => _client.delete('/admin/admins/$adminId');
 
@@ -59,6 +93,7 @@ class AdminRepository {
     required String customerContact,
     required double fare,
     required String vehicleClass,
+    String? customerEmail,
     String? notes,
   }) {
     return _client.post('/admin/jobs', data: {
@@ -71,6 +106,7 @@ class AdminRepository {
       'dropoff_address': dropoffLocation,
       'customer_name': customerName,
       'customer_contact': customerContact,
+      if (customerEmail != null && customerEmail.isNotEmpty) 'customer_email': customerEmail,
       'fare_amount': fare,
       'vehicle_class_requested': vehicleClass,
       if (notes != null && notes.isNotEmpty) 'notes': notes,
@@ -188,6 +224,23 @@ class AdminRepository {
     );
     return res.data ?? [];
   }
+
+  /// Millisecond booking audit log; every filter optional.
+  Future<List<AuditLogEntry>> fetchAuditLog({String? bookingRef, DateTime? from, DateTime? to}) async {
+    final res = await _client.get('/admin/audit-log', query: _auditQuery(bookingRef, from, to));
+    return (res.data as List).cast<Map<String, dynamic>>().map(AuditLogEntry.fromJson).toList();
+  }
+
+  Future<List<int>> fetchAuditLogCsv({String? bookingRef, DateTime? from, DateTime? to}) async {
+    final res = await _client.getBytes('/admin/audit-log/csv', query: _auditQuery(bookingRef, from, to));
+    return res.data ?? [];
+  }
+
+  Map<String, dynamic> _auditQuery(String? bookingRef, DateTime? from, DateTime? to) => {
+        if (bookingRef != null && bookingRef.isNotEmpty) 'ref': bookingRef,
+        if (from != null) 'from': from.toUtc().toIso8601String(),
+        if (to != null) 'to': to.toUtc().toIso8601String(),
+      };
 
   Future<List<ActionLogEntry>> fetchActionLog() async {
     final res = await _client.get('/admin/action-log');

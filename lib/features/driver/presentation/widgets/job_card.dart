@@ -25,12 +25,22 @@ class JobCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      formatDateTime(job.pickupDatetime),
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          formatDateTime(job.pickupDatetime),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        if (job.bookingRef.isNotEmpty)
+                          Text(
+                            job.bookingRef,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: colors.outline),
+                          ),
+                      ],
                     ),
                   ),
                   trailing ??
@@ -64,9 +74,11 @@ class JobCard extends StatelessWidget {
                 children: [
                   Icon(Icons.person_outline, size: 18, color: colors.outline),
                   const SizedBox(width: 6),
+                  // Passenger name only — drivers never get the passenger's
+                  // number (TfL: contact goes through the operating centre).
                   Expanded(
                     child: Text(
-                      '${job.customerName} · ${job.customerContact}',
+                      job.customerContact.isEmpty ? job.customerName : '${job.customerName} · ${job.customerContact}',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),

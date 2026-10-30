@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/config/env.dart';
 import '../../../../core/models/job.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../application/admin_providers.dart';
@@ -58,12 +60,29 @@ class JobDetailView extends StatelessWidget {
       children: [
         Text('Job details', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
+        if (job.bookingRef.isNotEmpty) _Row('Booking', job.bookingRef),
         _Row('Status', job.status),
+        if (job.bookedAt != null) _Row('Booked at', formatDateTime(job.bookedAt!.toLocal())),
         _Row('Pickup', formatDateTime(job.pickupDatetime)),
         _Row('From', job.pickupLocation),
         _Row('To', job.dropoffLocation),
         _Row('Customer', job.customerName),
         _Row('Contact', job.customerContact),
+        _Row('Email', job.customerEmail ?? 'None — passenger gets no email updates'),
+        if (job.trackingToken != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: '${Env.trackingBaseUrl}/${job.trackingToken}'));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Passenger tracking link copied')),
+                );
+              },
+              icon: const Icon(Icons.link),
+              label: const Text('Copy passenger tracking link'),
+            ),
+          ),
         _Row('Fare', formatCurrency(job.fare)),
         if (job.source != null) _Row('Source', job.source!),
         if (job.notes != null && job.notes!.isNotEmpty) _Row('Notes', job.notes!),
@@ -142,9 +161,9 @@ class _JobHistory extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(
-                          width: 130,
+                          width: 150,
                           child: Text(
-                            formatDateTime(e.createdAt),
+                            formatAuditTime(e.createdAt),
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.outline,
                               fontSize: 12,

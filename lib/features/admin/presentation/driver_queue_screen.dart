@@ -42,13 +42,17 @@ class DriverQueueScreen extends ConsumerWidget {
           mobileList: mobileList,
           detailFor: (d) => DriverDetailView(driverId: d.id),
           columns: const [
+            DataColumn(label: Text('Call sign')),
             DataColumn(label: Text('Name')),
             DataColumn(label: Text('Email')),
+            DataColumn(label: Text('Compliance')),
             DataColumn(label: Text('Status')),
           ],
           cellsFor: (d) => [
+            DataCell(Text(d.callSign ?? '—')),
             DataCell(Text(d.fullName)),
             DataCell(Text(d.email)),
+            DataCell(_ComplianceBadge(driver: d)),
             DataCell(Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -74,8 +78,14 @@ class _DriverTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: Text(driver.fullName),
-      subtitle: Text(driver.email),
+      title: Text(driver.callSign == null ? driver.fullName : '${driver.callSign} · ${driver.fullName}'),
+      subtitle: Row(
+        children: [
+          Flexible(child: Text(driver.email, overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 8),
+          _ComplianceBadge(driver: driver),
+        ],
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -111,6 +121,32 @@ class _StatusBadge extends StatelessWidget {
       backgroundColor: color.withValues(alpha: 0.15),
       side: BorderSide(color: color),
       visualDensity: VisualDensity.compact,
+    );
+  }
+}
+
+/// Compact licensing status for driver lists: expired > expiring > incomplete > OK.
+class _ComplianceBadge extends StatelessWidget {
+  const _ComplianceBadge({required this.driver});
+
+  final AdminDriverSummary driver;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = driver.compliance;
+    if (c == null) return const SizedBox.shrink();
+    final colors = Theme.of(context).colorScheme;
+    final (label, bg, fg) = c.hasExpired
+        ? ('Expired doc', colors.errorContainer, colors.onErrorContainer)
+        : c.hasExpiringSoon
+            ? ('Expiring soon', colors.tertiaryContainer, colors.onTertiaryContainer)
+            : c.compliant
+                ? ('Compliant', colors.primaryContainer, colors.onPrimaryContainer)
+                : ('Incomplete', colors.surfaceContainerHighest, colors.onSurfaceVariant);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      child: Text(label, style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }
