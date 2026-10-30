@@ -27,6 +27,7 @@ Future<bool> ensureLocationPermission(BuildContext context) async {
   if (kIsWeb) return false;
   var permission = await Geolocator.checkPermission();
   if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+    await _ensurePreciseLocation();
     return true;
   }
   if (permission == LocationPermission.deniedForever) {
@@ -56,7 +57,24 @@ Future<bool> ensureLocationPermission(BuildContext context) async {
   );
   if (agreed != true) return false;
   permission = await Geolocator.requestPermission();
-  return permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+  final granted = permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+  if (granted) await _ensurePreciseLocation();
+  return granted;
+}
+
+/// iOS 14+ and Android 12+ let people grant only an approximate location,
+/// which can be kilometres off — useless on a tracking map. On iOS ask for
+/// precise location for this job (purpose text: Info.plist
+/// NSLocationTemporaryUsageDescriptionDictionary > LiveTracking).
+Future<void> _ensurePreciseLocation() async {
+  if (defaultTargetPlatform != TargetPlatform.iOS) return;
+  try {
+    if (await Geolocator.getLocationAccuracy() == LocationAccuracyStatus.reduced) {
+      await Geolocator.requestTemporaryFullAccuracy(purposeKey: 'LiveTracking');
+    }
+  } catch (e) {
+    debugPrint('[location] precise-accuracy request failed: $e');
+  }
 }
 
 Future<void> _showSettingsHint(BuildContext context) => showDialog<void>(
@@ -84,7 +102,7 @@ Future<void> _showSettingsHint(BuildContext context) => showDialog<void>(
 /// live, at most every [_minInterval]. On Android this runs as a foreground
 /// service with an ongoing notification, so it keeps working while the
 /// driver uses a navigation app; it stops as soon as no job is live.
-class LocationSharingController {
+class LocationSharingController extends ChangeNotifier {
   LocationSharingController(this._repository);
 
   final DriverRepository _repository;
@@ -110,13 +128,38 @@ class LocationSharingController {
       _send,
       onError: (Object e) => debugPrint('[location] stream error: $e'),
     );
+    notifyListeners();
+    // Send a first fix straight away rather than waiting for the stream's
+    // first distance-filtered update.
+    try {
+      _send(await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)));
+    } catch (e) {
+      debugPrint('[location] first fix failed: $e');
+    }
   }
 
   Future<void> stop() async {
+    final wasSharing = _subscription != null;
     await _subscription?.cancel();
     _subscription = null;
     _jobId = null;
     _lastSent = null;
+    if (wasSharing) notifyListeners();
+  }
+
+  /// Asks for permission (with the in-app explanation) and, if granted,
+  /// starts sharing for [liveJob]. Used by the "Share my location" button
+  /// and when the app opens with a job already under way.
+  Future<bool> enableFor(BuildContext context, Job liveJob) async {
+    final granted = await ensureLocationPermission(context);
+    if (granted) await syncWith(liveJob);
+    return granted;
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _send(Position p) async {
@@ -169,8 +212,6 @@ class LocationSharingController {
   }
 }
 
-final locationSharingProvider = Provider<LocationSharingController>((ref) {
-  final controller = LocationSharingController(ref.watch(driverRepositoryProvider));
-  ref.onDispose(controller.stop);
-  return controller;
+final locationSharingProvider = ChangeNotifierProvider<LocationSharingController>((ref) {
+  return LocationSharingController(ref.watch(driverRepositoryProvider));
 });

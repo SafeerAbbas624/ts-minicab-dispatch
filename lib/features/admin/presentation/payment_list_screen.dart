@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
+import '../../../core/utils/pick_upload.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -178,12 +178,8 @@ class _MarkPaidActionState extends ConsumerState<_MarkPaidAction> {
 
     File? slipFile;
     if (attachSlip) {
-      final picked = await FilePicker.pickFile(
-        type: FileType.custom,
-        allowedExtensions: allowedUploadExtensions,
-      );
-      if (picked?.path != null) {
-        final candidate = File(picked!.path!);
+      final candidate = mounted ? await pickUploadFile(context, title: 'Transaction slip') : null;
+      if (candidate != null) {
         final validationError = await validateUploadFile(candidate);
         if (validationError != null) {
           if (mounted) {

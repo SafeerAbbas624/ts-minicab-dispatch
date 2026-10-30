@@ -52,6 +52,7 @@ dependencies:
   connectivity_plus: ">=7.3.0 <7.3.2"
   url_launcher: ^6.3.3
   timezone: ^0.10.0
+  image_picker: 1.2.3
 
 dev_dependencies:
   flutter_test:

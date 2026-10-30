@@ -21,6 +21,8 @@ import 'driver_settings_screen.dart';
 class DriverShell extends ConsumerWidget {
   const DriverShell({super.key});
 
+  static bool _askedThisSession = false;
+
   static const _titles = ['Jobs', 'History', 'Earnings', 'Settings'];
   static const _tabs = [
     JobsTabScreen(),
@@ -36,7 +38,18 @@ class DriverShell extends ConsumerWidget {
     // Live location follows the driver's jobs: on from "Start Job" until the
     // job is completed or handed back, off otherwise.
     ref.listen(activeJobsProvider, (_, next) {
-      next.whenData((jobs) => ref.read(locationSharingProvider).syncWith(liveTrackingJob(jobs)));
+      next.whenData((jobs) async {
+        final live = liveTrackingJob(jobs);
+        final sharing = ref.read(locationSharingProvider);
+        await sharing.syncWith(live);
+        // A job already under way (e.g. the app was reopened mid-journey)
+        // but nothing shared: ask once per app session instead of waiting
+        // for a Start job tap that will never come.
+        if (live != null && sharing.sharingJobId == null && !_askedThisSession && context.mounted) {
+          _askedThisSession = true;
+          await sharing.enableFor(context, live);
+        }
+      });
     });
     // Back online: pull fresh state rather than trusting what was on screen.
     ref.listen(isOnlineProvider, (prev, next) {

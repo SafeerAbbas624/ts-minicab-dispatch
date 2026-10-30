@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,6 +6,7 @@ import '../../../core/models/driver.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/pick_upload.dart';
 import '../../../core/utils/upload_validation.dart';
 import '../application/driver_providers.dart';
 import '../data/driver_repository.dart';
@@ -190,13 +188,16 @@ class _DocumentTileState extends ConsumerState<_DocumentTile> {
       if (expiry == null) return;
     }
 
-    final file = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: allowedUploadExtensions,
+    if (!mounted) return;
+    // Photos of the driver and car come from the camera or photo library;
+    // everything else may also be a PDF from Files.
+    final picked = await pickUploadFile(
+      context,
+      photosOnly: widget.type == 'driver_photo' || widget.type == 'vehicle_photo',
+      title: documentTypeLabel(widget.type),
     );
-    if (file == null || file.path == null) return;
+    if (picked == null) return;
 
-    final picked = File(file.path!);
     final validationError = await validateUploadFile(picked);
     if (validationError != null) {
       if (mounted) {

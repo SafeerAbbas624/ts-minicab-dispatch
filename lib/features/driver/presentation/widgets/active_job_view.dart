@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -299,6 +300,18 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
                         style: t.bodySmall?.copyWith(color: c.onSurface),
                       ),
                     ),
+                    if (!sharing && !kIsWeb)
+                      FilledButton.tonal(
+                        onPressed: () async {
+                          final granted = await ref.read(locationSharingProvider).enableFor(context, job);
+                          if (!granted && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text('Allow location for TS Minicab to share it with your passenger.'),
+                            ));
+                          }
+                        },
+                        child: const Text('Share'),
+                      ),
                   ],
                 ),
               ],
