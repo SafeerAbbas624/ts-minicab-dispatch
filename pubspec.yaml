@@ -51,6 +51,7 @@ dependencies:
   # 7.3.2 conflicts with geolocator_linux over dbus
   connectivity_plus: ">=7.3.0 <7.3.2"
   url_launcher: ^6.3.3
+  timezone: ^0.10.0
 
 dev_dependencies:
   flutter_test:

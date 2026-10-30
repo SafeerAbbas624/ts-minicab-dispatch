@@ -141,7 +141,7 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
       if (value == null) return '';
       if (column.endsWith('_at') || column.endsWith('_datetime')) {
         final dt = DateTime.tryParse(value.toString());
-        if (dt != null) return formatDateTime(dt.toLocal());
+        if (dt != null) return formatDateTime(dt);
       }
       return '$value';
     }

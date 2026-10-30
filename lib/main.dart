@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'core/utils/formatters.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
@@ -10,6 +11,7 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  initLondonTime();
   // Without this, Flutter web defaults to hash-based URLs
   // (app.tsminicab.com/#/delete-account) — every direct link to a public
   // route (privacy policy, terms, delete-account) silently failed to route

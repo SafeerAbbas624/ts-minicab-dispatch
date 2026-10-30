@@ -62,7 +62,7 @@ class JobDetailView extends StatelessWidget {
         const SizedBox(height: 16),
         if (job.bookingRef.isNotEmpty) _Row('Booking', job.bookingRef),
         _Row('Status', job.status),
-        if (job.bookedAt != null) _Row('Booked at', formatDateTime(job.bookedAt!.toLocal())),
+        if (job.bookedAt != null) _Row('Booked at', formatDateTime(job.bookedAt!)),
         _Row('Pickup', formatDateTime(job.pickupDatetime)),
         _Row('From', job.pickupLocation),
         _Row('To', job.dropoffLocation),

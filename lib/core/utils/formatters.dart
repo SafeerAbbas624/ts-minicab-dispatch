@@ -1,4 +1,19 @@
 import 'package:intl/intl.dart';
+import 'package:timezone/data/latest_10y.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
+
+/// TS Minicab is a London operator: every time in the app — pickups,
+/// bookings, audit entries — is shown in London time (GMT/BST) whatever the
+/// device's own timezone, so the office, drivers and TfL all read the same
+/// clock. Call [initLondonTime] once at startup.
+late final tz.Location _london;
+
+void initLondonTime() {
+  tzdata.initializeTimeZones();
+  _london = tz.getLocation('Europe/London');
+}
+
+DateTime toLondon(DateTime dt) => tz.TZDateTime.from(dt, _london);
 
 final _currencyFormat = NumberFormat.currency(locale: 'en_GB', symbol: '£');
 final _dateTimeFormat = DateFormat('EEE d MMM, HH:mm');
@@ -7,12 +22,12 @@ final _auditFormat = DateFormat('dd/MM/yyyy HH:mm:ss.SSS');
 
 String formatCurrency(num amount) => _currencyFormat.format(amount);
 
-String formatDateTime(DateTime dt) => _dateTimeFormat.format(dt);
+String formatDateTime(DateTime dt) => _dateTimeFormat.format(toLondon(dt));
 
-String formatDate(DateTime dt) => _dateFormat.format(dt);
+String formatDate(DateTime dt) => _dateFormat.format(toLondon(dt));
 
 /// Millisecond precision, for booking history / audit entries.
-String formatAuditTime(DateTime dt) => _auditFormat.format(dt.toLocal());
+String formatAuditTime(DateTime dt) => _auditFormat.format(toLondon(dt));
 
 /// "2026-10-30" — for date-only API fields (expiry dates, date of birth).
 String dateOnly(DateTime dt) =>

@@ -130,10 +130,13 @@ class _QueueItemActionsState extends ConsumerState<_QueueItemActions> {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
+    // A Row, not a Wrap: inside the desktop DataTable a wrapped second line
+    // overflowed the fixed row height and clipped the Approve button.
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         TextButton(onPressed: _isSubmitting ? null : _edit, child: const Text('Edit')),
+        const SizedBox(width: 8),
         FilledButton(
           onPressed: _isSubmitting ? null : _approve,
           child: const Text('Approve'),
