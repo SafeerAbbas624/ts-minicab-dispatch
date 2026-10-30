@@ -6,19 +6,22 @@ import '../../../core/utils/csv_export.dart';
 import '../../../core/utils/formatters.dart';
 import '../data/admin_repository.dart';
 
+// Same headings as the CSV, which follows the layout TfL's compliance
+// inspector asked for (booking ref is shown here only, for finding a job).
 const _tflColumnLabels = {
   'booking_ref': 'Booking',
-  'booked_at': 'Booked at',
-  'pickup_datetime': 'Pickup',
-  'status': 'Status',
-  'call_sign': 'Call sign',
-  'driver_licence_number': 'Driver licence',
-  'forename': 'Forename',
-  'surname': 'Surname',
-  'vehicle_licence_number': 'Vehicle licence',
-  'vrm': 'VRM',
-  'make': 'Make',
-  'model': 'Model',
+  'accepted_by': 'Person accepting booking',
+  'booked_at': 'Date of booking',
+  'journey_at': 'Date of journey',
+  'customer_name': 'Customer name',
+  'telephone': 'Telephone number',
+  'collection': 'Place of collection',
+  'destination': 'Main destination',
+  'fare_quoted': 'Fare quoted',
+  'dispatched_by': 'Person dispatching booking',
+  'driver': 'Driver full name and PHV licence number',
+  'vehicle_reg': 'Vehicle reg.',
+  'sublet': 'Sublet - Op No. & Name',
 };
 
 DateTime _mostRecentMonday(DateTime from) => from.subtract(Duration(days: from.weekday - 1));
@@ -77,7 +80,7 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
           await ref.read(adminRepositoryProvider).fetchTflExportCsv(weekStart: _weekStart);
       final weekLabel = dateOnly(_weekStart);
       if (!mounted) return;
-      await shareCsv(bytes, 'tfl-export-$weekLabel.csv', subject: 'TfL export $weekLabel');
+      await shareCsv(bytes, 'ts-minicab-bookings-$weekLabel.csv', subject: 'TS Minicab bookings w/c $weekLabel');
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -135,7 +138,7 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return Center(child: Text(_error!));
     final rows = _rows ?? [];
-    if (rows.isEmpty) return const Center(child: Text('No completed journeys this week'));
+    if (rows.isEmpty) return const Center(child: Text('No bookings this week'));
 
     final columns = rows.first.keys.where((c) => c != 'job_id').toList();
     String cell(String column, dynamic value) {
