@@ -52,3 +52,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Built APKs copied to the repo root for testers
+*.apk

@@ -1,0 +1,95 @@
+# Codemagic CI — iOS builds on Codemagic's macOS machines (no Mac needed
+# locally). Both workflows sign automatically through an App Store Connect
+# API key and upload to TestFlight; App Store submission is then done by
+# hand in App Store Connect.
+#
+# One-time setup in Codemagic (done by the account owner, see
+# docs/IOS_RELEASE.md):
+#   1. Teams > Integrations > Developer Portal: add the App Store Connect API
+#      key and name the integration exactly "TS Minicab App Store Connect".
+#   2. App settings > Environment variables, group "ios_release":
+#        APP_STORE_APPLE_ID = the app's numeric Apple ID (App Store Connect >
+#                             App Information > Apple ID)
+#
+# Workflows:
+#   ios-staging    — talks to the staging API; for testing the TfL features
+#                    on an iPhone through TestFlight (internal testers only).
+#   ios-production — talks to the live API; the build that goes to review.
+
+definitions:
+  environment: &env
+    flutter: 3.47.1
+    xcode: latest
+    cocoapods: default
+    groups:
+      - ios_release
+    ios_signing:
+      distribution_type: app_store
+      bundle_identifier: com.tsminicab.dispatch
+
+  scripts:
+    - &get_packages
+      name: Get Flutter packages
+      script: flutter pub get
+    - &signing
+      name: Apply signing profiles
+      script: xcode-project use-profiles
+    - &build_number
+      name: Next build number after the latest TestFlight build
+      script: |
+        LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 1)
+        echo "BUILD_NUMBER=$((LATEST + 1))" >> $CM_ENV
+
+  publishing: &testflight
+    app_store_connect:
+      auth: integration
+      submit_to_testflight: true
+    email:
+      recipients:
+        - admin@tsminicab.com
+      notify:
+        success: true
+        failure: true
+
+workflows:
+  ios-staging:
+    name: iOS — staging build to TestFlight
+    max_build_duration: 60
+    integrations:
+      app_store_connect: TS Minicab App Store Connect
+    environment: *env
+    scripts:
+      - *get_packages
+      - *signing
+      - *build_number
+      - name: Build IPA (staging API)
+        script: |
+          flutter build ipa --release \
+            --build-number=$BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist \
+            --dart-define=API_BASE_URL=https://api.tsminicab.com/staging \
+            --dart-define=TRACKING_BASE_URL=https://api.tsminicab.com/staging-web/track
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing: *testflight
+
+  ios-production:
+    name: iOS — production build to TestFlight
+    max_build_duration: 60
+    integrations:
+      app_store_connect: TS Minicab App Store Connect
+    environment: *env
+    scripts:
+      - *get_packages
+      - *signing
+      - *build_number
+      - name: Build IPA (live API)
+        script: |
+          flutter build ipa --release \
+            --build-number=$BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing: *testflight
