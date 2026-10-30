@@ -18,6 +18,7 @@ const _tflColumnLabels = {
   'vehicle_licence_number': 'Vehicle licence',
   'vrm': 'VRM',
   'make': 'Make',
+  'model': 'Model',
 };
 
 DateTime _mostRecentMonday(DateTime from) => from.subtract(Duration(days: from.weekday - 1));
@@ -134,7 +135,7 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return Center(child: Text(_error!));
     final rows = _rows ?? [];
-    if (rows.isEmpty) return const Center(child: Text('No data for this week'));
+    if (rows.isEmpty) return const Center(child: Text('No completed journeys this week'));
 
     final columns = rows.first.keys.where((c) => c != 'job_id').toList();
     String cell(String column, dynamic value) {
