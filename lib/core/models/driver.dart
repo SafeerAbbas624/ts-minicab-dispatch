@@ -138,6 +138,11 @@ class Vehicle {
     this.phvLicenceNumber,
     this.vehicleClass,
     this.ownedByDriver = true,
+    this.keeperName,
+    this.keeperAddress,
+    this.availableFrom,
+    this.ceasedAt,
+    this.isActive = true,
   });
 
   /// Vehicles come back as raw Prisma rows (camelCase) on both the driver's
@@ -152,6 +157,11 @@ class Vehicle {
       phvLicenceNumber: json['phvVehicleLicenceNumber'] as String?,
       vehicleClass: json['vehicleClass'] as String?,
       ownedByDriver: json['ownedByDriver'] as bool? ?? true,
+      keeperName: json['keeperName'] as String?,
+      keeperAddress: json['keeperAddress'] as String?,
+      availableFrom: DateTime.tryParse(json['availableFrom'] as String? ?? ''),
+      ceasedAt: DateTime.tryParse(json['ceasedAt'] as String? ?? ''),
+      isActive: (json['status'] as String? ?? 'active') == 'active',
     );
   }
 
@@ -170,6 +180,11 @@ class Vehicle {
   final String? phvLicenceNumber;
   final String? vehicleClass;
   final bool ownedByDriver;
+  final String? keeperName;
+  final String? keeperAddress;
+  final DateTime? availableFrom;
+  final DateTime? ceasedAt;
+  final bool isActive;
 
   String get description => [colour, make, model].whereType<String>().where((s) => s.isNotEmpty).join(' ');
 }

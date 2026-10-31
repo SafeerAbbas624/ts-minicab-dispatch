@@ -1,5 +1,6 @@
 import 'admin_models.dart';
 import 'driver.dart';
+import 'records_models.dart';
 
 /// Confirmed against the real API: `bank_account_details` is a single
 /// free-text string ("Sort code 12-34-56, Acc 12345678"), not a structured
@@ -25,6 +26,9 @@ class AdminDriverDetail {
     required this.documents,
     required this.notes,
     required this.bankDetails,
+    this.availability = const [],
+    this.vehicles = const [],
+    this.erasureDueAt,
   });
 
   factory AdminDriverDetail.fromJson(Map<String, dynamic> json) {
@@ -35,6 +39,9 @@ class AdminDriverDetail {
       documents: documentsJson.map(DriverDocument.fromJson).toList(),
       notes: notesJson.map(DriverNote.fromJson).toList(),
       bankDetails: BankDetails.fromJson(json),
+      availability: ((json['availability'] as List?) ?? const []).cast<Map<String, dynamic>>().map(AvailabilityPeriod.fromJson).toList(),
+      vehicles: ((json['vehicles'] as List?) ?? const []).cast<Map<String, dynamic>>().map(Vehicle.fromJson).toList(),
+      erasureDueAt: DateTime.tryParse(json['erasure_due_at'] as String? ?? ''),
     );
   }
 
@@ -42,4 +49,14 @@ class AdminDriverDetail {
   final List<DriverDocument> documents;
   final List<DriverNote> notes;
   final BankDetails bankDetails;
+
+  /// Oldest first; the last one is open while the driver is available.
+  final List<AvailabilityPeriod> availability;
+
+  /// Current and former vehicles (a new registration starts a new record).
+  final List<Vehicle> vehicles;
+
+  /// Set once the driver has closed their account: the record is erased
+  /// automatically on this date (12 months after leaving).
+  final DateTime? erasureDueAt;
 }

@@ -14,7 +14,8 @@ import 'widgets/needs_attention.dart';
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
-  void _go(WidgetRef ref, {required int tab, int? jobsSub, int? driversSub, int? paymentsSub}) {
+  void _go(WidgetRef ref, {required int tab, int? jobsSub, int? driversSub, int? paymentsSub, int? recordsSub}) {
+    if (recordsSub != null) ref.read(recordsSubTabIndexProvider.notifier).state = recordsSub;
     if (jobsSub != null) ref.read(jobsSubTabIndexProvider.notifier).state = jobsSub;
     if (driversSub != null) ref.read(driversSubTabIndexProvider.notifier).state = driversSub;
     if (paymentsSub != null) ref.read(paymentsSubTabIndexProvider.notifier).state = paymentsSub;
@@ -32,6 +33,7 @@ class DashboardScreen extends ConsumerWidget {
         ref.invalidate(adminJobsProvider('open'));
         ref.invalidate(adminDriversProvider(null));
         ref.invalidate(adminCancellationRequestsProvider);
+        ref.invalidate(adminComplianceSummaryProvider);
       },
       child: analyticsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -40,8 +42,8 @@ class DashboardScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             NeedsAttention(
-              onGo: ({required int tab, int? jobsSub, int? driversSub}) =>
-                  _go(ref, tab: tab, jobsSub: jobsSub, driversSub: driversSub),
+              onGo: ({required int tab, int? jobsSub, int? driversSub, int? recordsSub}) =>
+                  _go(ref, tab: tab, jobsSub: jobsSub, driversSub: driversSub, recordsSub: recordsSub),
             ),
             const SizedBox(height: 20),
             Padding(

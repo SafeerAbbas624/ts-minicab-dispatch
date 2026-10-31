@@ -1,4 +1,5 @@
 import 'driver.dart';
+import 'records_models.dart';
 
 // Decimal fields are plain JSON numbers as of the backend's normalization
 // fix — this also tolerates a numeric string defensively.
@@ -65,15 +66,33 @@ class AdminDriverSummary {
 /// An operator account (admin / super_admin). `displayName` is what
 /// passengers see as "Your dispatcher" and what the audit log shows.
 class AdminUser {
-  AdminUser({required this.id, required this.email, required this.role, this.displayName, this.createdAt});
+  AdminUser({
+    required this.id,
+    required this.email,
+    required this.role,
+    this.status = 'active',
+    this.displayName,
+    this.createdAt,
+    this.staffRegister,
+  });
 
   factory AdminUser.fromJson(Map<String, dynamic> json) => AdminUser(
         id: json['id'].toString(),
         email: json['email'] as String? ?? '',
         role: json['role'] as String? ?? 'admin',
+        status: json['status'] as String? ?? 'active',
         displayName: json['display_name'] as String?,
         createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
+        staffRegister: json['staff_register'] is Map<String, dynamic>
+            ? StaffRegisterEntry.fromJson(json['staff_register'] as Map<String, dynamic>, user: json)
+            : null,
       );
+
+  final String status;
+
+  /// Booking & dispatch staff register entry (TfL).
+  final StaffRegisterEntry? staffRegister;
+  bool get isRemoved => status != 'active';
 
   final String id;
   final String email;

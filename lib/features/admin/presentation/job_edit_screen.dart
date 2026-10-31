@@ -23,6 +23,7 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
   late final TextEditingController _customerContactController;
   late final TextEditingController _customerEmailController;
   late final TextEditingController _fareController;
+  late String _fareType = widget.job.fareType ?? 'fixed';
   late final TextEditingController _notesController;
   late DateTime _pickupDatetime;
   late String _vehicleClass;
@@ -93,6 +94,7 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
         'customer_contact': _customerContactController.text.trim(),
         'customer_email': _customerEmailController.text.trim(),
         'fare_amount': double.parse(_fareController.text.trim()),
+        'fare_type': _fareType,
         'vehicle_class_requested': _vehicleClass,
         'notes': _notesController.text.trim(),
       });
@@ -160,10 +162,24 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _fareController,
-                  decoration: const InputDecoration(labelText: 'Fare (£)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Fare (£)',
+                    helperText: 'Agreed with the passenger before the journey (TfL)',
+                  ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) =>
-                      (v == null || double.tryParse(v) == null) ? 'Enter a number' : null,
+                  validator: (v) {
+                    final n = double.tryParse(v?.trim() ?? '');
+                    return (n == null || n <= 0) ? 'Enter the fare agreed with the passenger' : null;
+                  },
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'fixed', label: Text('Fixed fare')),
+                    ButtonSegment(value: 'estimate', label: Text('Estimate')),
+                  ],
+                  selected: {_fareType},
+                  onSelectionChanged: (v) => setState(() => _fareType = v.first),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(

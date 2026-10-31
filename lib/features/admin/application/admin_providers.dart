@@ -4,6 +4,7 @@ import '../../../core/models/admin_driver_detail.dart';
 import '../../../core/models/admin_models.dart';
 import '../../../core/models/job.dart';
 import '../data/admin_repository.dart';
+import '../../../core/models/records_models.dart';
 
 final adminDriversProvider =
     FutureProvider.autoDispose.family<List<AdminDriverSummary>, String?>((ref, status) {
@@ -52,6 +53,25 @@ final adminActionLogProvider = FutureProvider.autoDispose<List<ActionLogEntry>>(
 /// Action Logs, Booking Audit Log, Settings. Held as shared state (not local widget state) so
 /// Dashboard's stat cards can jump straight to a tab — and a sub-tab inside
 /// it — from outside AdminShell's own widget tree.
+final adminComplaintsProvider = FutureProvider.autoDispose<List<Complaint>>((ref) {
+  return ref.watch(adminRepositoryProvider).fetchComplaints();
+});
+
+final adminLostPropertyProvider = FutureProvider.autoDispose<List<LostPropertyItem>>((ref) {
+  return ref.watch(adminRepositoryProvider).fetchLostProperty();
+});
+
+final adminStaffRegisterProvider = FutureProvider.autoDispose<List<StaffRegisterEntry>>((ref) {
+  return ref.watch(adminRepositoryProvider).fetchStaffRegister();
+});
+
+final adminComplianceSummaryProvider = FutureProvider.autoDispose<ComplianceSummary>((ref) {
+  return ref.watch(adminRepositoryProvider).fetchComplianceSummary();
+});
+
+/// Records section sub-tab: 0 complaints, 1 lost property, 2 staff register.
+final recordsSubTabIndexProvider = StateProvider<int>((ref) => 0);
+
 final adminTabIndexProvider = StateProvider<int>((ref) => 0);
 
 /// Sub-tab within the Jobs mega-tab: 0=Post a Job, 1=Website Jobs,

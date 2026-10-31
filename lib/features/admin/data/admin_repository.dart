@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/admin_driver_detail.dart';
 import '../../../core/models/admin_models.dart';
 import '../../../core/models/job.dart';
+import '../../../core/models/records_models.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/providers/core_providers.dart';
 
@@ -30,7 +31,26 @@ class AdminRepository {
 
   Future<void> rejectDriver(String driverId) => _client.post('/admin/drivers/$driverId/reject');
 
-  Future<void> suspendDriver(String driverId) => _client.post('/admin/drivers/$driverId/suspend');
+  /// [reason] is a `leaveReasons` key — why the driver stopped being
+  /// available (TfL driver record "date of leaving").
+  Future<void> suspendDriver(String driverId, {String reason = 'other', String? note}) =>
+      _client.post('/admin/drivers/$driverId/suspend', data: {
+        'reason': reason,
+        if (note != null && note.isNotEmpty) 'note': note,
+      });
+
+  Future<void> reinstateDriver(String driverId) => _client.post('/admin/drivers/$driverId/reinstate');
+
+  /// Corrects an availability period; pass only what changes. Dates go as
+  /// UTC ISO strings; `null` clears.
+  Future<void> updateAvailability(String driverId, String periodId, Map<String, dynamic> changes) =>
+      _client.patch('/admin/drivers/$driverId/availability/$periodId', data: changes);
+
+  Future<List<int>> fetchDriverRecordPdf(String driverId) async =>
+      (await _client.getBytes('/admin/drivers/$driverId/record.pdf')).data ?? [];
+
+  Future<List<int>> fetchVehicleRecordPdf(String vehicleId) async =>
+      (await _client.getBytes('/admin/vehicles/$vehicleId/record.pdf')).data ?? [];
 
   Future<void> deleteDriver(String driverId) => _client.delete('/admin/drivers/$driverId');
 
@@ -76,6 +96,53 @@ class AdminRepository {
   Future<void> renameAdmin(String adminId, String displayName) =>
       _client.patch('/admin/admins/$adminId', data: {'display_name': displayName});
 
+  /// Staff register fields (snake_case keys of the backend's
+  /// staff_register object); `me: true` edits your own entry.
+  Future<void> updateStaffRegister(String adminId, Map<String, dynamic> fields, {bool me = false}) =>
+      _client.patch(me ? '/admin/me' : '/admin/admins/$adminId', data: {'staff_register': fields});
+
+  Future<List<StaffRegisterEntry>> fetchStaffRegister() async {
+    final res = await _client.get('/admin/staff-register');
+    return (res.data as List).cast<Map<String, dynamic>>().map((j) => StaffRegisterEntry.fromJson(j)).toList();
+  }
+
+  Future<List<int>> fetchStaffRegisterCsv() async => (await _client.getBytes('/admin/staff-register/csv')).data ?? [];
+
+  // Complaints & lost property (TfL regulations 14 and 15)
+
+  Future<List<Complaint>> fetchComplaints({String? status}) async {
+    final res = await _client.get('/admin/complaints', query: status != null ? {'status': status} : null);
+    return (res.data as List).cast<Map<String, dynamic>>().map(Complaint.fromJson).toList();
+  }
+
+  Future<void> createComplaint(Map<String, dynamic> body) => _client.post('/admin/complaints', data: body);
+
+  Future<void> updateComplaint(String id, Map<String, dynamic> changes) => _client.patch('/admin/complaints/$id', data: changes);
+
+  Future<List<int>> fetchComplaintsCsv() async => (await _client.getBytes('/admin/complaints/csv')).data ?? [];
+
+  Future<List<int>> fetchComplaintPdf(String id) async => (await _client.getBytes('/admin/complaints/$id/pdf')).data ?? [];
+
+  Future<List<LostPropertyItem>> fetchLostProperty({String? status}) async {
+    final res = await _client.get('/admin/lost-property', query: status != null ? {'status': status} : null);
+    return (res.data as List).cast<Map<String, dynamic>>().map(LostPropertyItem.fromJson).toList();
+  }
+
+  Future<void> createLostProperty(Map<String, dynamic> body) => _client.post('/admin/lost-property', data: body);
+
+  Future<void> updateLostProperty(String id, Map<String, dynamic> changes) =>
+      _client.patch('/admin/lost-property/$id', data: changes);
+
+  Future<List<int>> fetchLostPropertyCsv() async => (await _client.getBytes('/admin/lost-property/csv')).data ?? [];
+
+  Future<List<int>> fetchLostPropertyPdf(String id) async => (await _client.getBytes('/admin/lost-property/$id/pdf')).data ?? [];
+
+  Future<ComplianceSummary> fetchComplianceSummary() async {
+    final res = await _client.get('/admin/compliance-summary');
+    return ComplianceSummary.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  /// Removes sign-in access; the person stays on the staff register.
   Future<void> deleteAdmin(String adminId) => _client.delete('/admin/admins/$adminId');
 
   // Jobs
@@ -92,6 +159,7 @@ class AdminRepository {
     required String customerName,
     required String customerContact,
     required double fare,
+    String fareType = 'fixed',
     required String vehicleClass,
     String? customerEmail,
     String? notes,
@@ -108,6 +176,7 @@ class AdminRepository {
       'customer_contact': customerContact,
       if (customerEmail != null && customerEmail.isNotEmpty) 'customer_email': customerEmail,
       'fare_amount': fare,
+      'fare_type': fareType,
       'vehicle_class_requested': vehicleClass,
       if (notes != null && notes.isNotEmpty) 'notes': notes,
     });
@@ -222,6 +291,12 @@ class AdminRepository {
       '/admin/tfl-export/csv',
       query: {'week_start': _dateOnly(weekStart)},
     );
+    return res.data ?? [];
+  }
+
+  /// TfL portal weekly upload: `kind` is 'drivers' or 'vehicles'.
+  Future<List<int>> fetchTflUploadCsv(String kind, {required DateTime weekStart}) async {
+    final res = await _client.getBytes('/admin/tfl-upload/$kind.csv', query: {'week_start': _dateOnly(weekStart)});
     return res.data ?? [];
   }
 

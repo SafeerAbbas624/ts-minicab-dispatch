@@ -41,7 +41,9 @@ class AdminsScreen extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Remove ${admin.label}?'),
-        content: const Text('They will no longer be able to sign in to the admin panel.'),
+        content: const Text(
+          'They will no longer be able to sign in. They stay on the staff register (with today as their date ceased) for 12 months, as TfL requires.',
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           FilledButton(
@@ -91,12 +93,15 @@ class AdminsScreen extends ConsumerWidget {
             return ListTile(
               leading: CircleAvatar(child: Text(a.label.characters.first.toUpperCase())),
               title: Text(a.displayName ?? '(no dispatcher name)'),
-              subtitle: Text('${a.email} · ${a.isSuperAdmin ? 'Super admin' : a.role == 'demo_admin' ? 'Demo admin' : 'Admin'}'),
+              subtitle: Text(
+                '${a.email} · ${a.isRemoved ? 'Removed' : a.isSuperAdmin ? 'Super admin' : a.role == 'demo_admin' ? 'Demo admin' : 'Admin'}'
+                '${(a.staffRegister?.missing.isNotEmpty ?? false) && !a.isRemoved ? ' · staff register incomplete' : ''}',
+              ),
               trailing: PopupMenuButton<String>(
                 onSelected: (v) => v == 'rename' ? _rename(context, ref, a) : _delete(context, ref, a),
                 itemBuilder: (context) => [
                   const PopupMenuItem(value: 'rename', child: Text('Change dispatcher name')),
-                  if (!a.isSuperAdmin && a.role != 'demo_admin')
+                  if (!a.isSuperAdmin && a.role != 'demo_admin' && !a.isRemoved)
                     const PopupMenuItem(value: 'delete', child: Text('Remove admin')),
                 ],
               ),

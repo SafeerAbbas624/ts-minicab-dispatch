@@ -51,12 +51,14 @@ class _DriverDetailsFormState extends State<DriverDetailsForm> {
   late final _phv = TextEditingController(text: widget.driver.vehicle?.phvLicenceNumber);
   late String? _vehicleClass = widget.driver.vehicle?.vehicleClass;
   late bool _owned = widget.driver.vehicle?.ownedByDriver ?? true;
+  late final _keeperName = TextEditingController(text: widget.driver.vehicle?.keeperName);
+  late final _keeperAddress = TextEditingController(text: widget.driver.vehicle?.keeperAddress);
 
   bool _saving = false;
 
   @override
   void dispose() {
-    for (final c in [_forename, _surname, _phone, _address, _postcode, _dvla, _badge, _ni, _make, _model, _colour, _vrm, _phv]) {
+    for (final c in [_forename, _surname, _phone, _address, _postcode, _dvla, _badge, _ni, _make, _model, _colour, _vrm, _phv, _keeperName, _keeperAddress]) {
       c.dispose();
     }
     super.dispose();
@@ -103,6 +105,8 @@ class _DriverDetailsFormState extends State<DriverDetailsForm> {
         'phv_vehicle_licence_number': _phv.text.trim(),
         'vehicle_class': ?_vehicleClass,
         'owned_by_driver': _owned,
+        if (!_owned) 'keeper_name': _keeperName.text.trim(),
+        if (!_owned) 'keeper_address': _keeperAddress.text.trim(),
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Details saved')));
@@ -184,6 +188,11 @@ class _DriverDetailsFormState extends State<DriverDetailsForm> {
             value: _owned,
             onChanged: (v) => setState(() => _owned = v),
           ),
+          if (!_owned) ...[
+            const SizedBox(height: 8),
+            _field(_keeperName, "Registered keeper's name", hint: 'As shown on the V5C'),
+            _field(_keeperAddress, "Registered keeper's address", hint: 'Including postcode'),
+          ],
           const SizedBox(height: 16),
           FilledButton(
             onPressed: _saving ? null : _save,

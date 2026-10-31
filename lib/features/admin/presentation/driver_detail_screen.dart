@@ -11,6 +11,7 @@ import '../../driver/presentation/profile_screen.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 import 'widgets/document_review_dialog.dart';
+import 'widgets/driver_records_section.dart';
 
 /// Thin Scaffold wrapper around [DriverDetailView] for the mobile
 /// full-screen push (`Navigator.push` from driver_queue_screen.dart). Desktop
@@ -165,15 +166,30 @@ class _DriverDetailViewState extends ConsumerState<DriverDetailView> {
                           ),
                   child: const Text('Reject'),
                 ),
-                OutlinedButton(
-                  onPressed: _isSubmitting
-                      ? null
-                      : () => _runAction(
-                            () => repo.suspendDriver(widget.driverId),
-                            successMessage: 'Driver suspended',
-                          ),
-                  child: const Text('Suspend'),
-                ),
+                if (driver.accountStatus == DriverAccountStatus.suspended)
+                  OutlinedButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => _runAction(
+                              () => repo.reinstateDriver(widget.driverId),
+                              successMessage: 'Driver reinstated',
+                            ),
+                    child: const Text('Reinstate'),
+                  )
+                else
+                  OutlinedButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () async {
+                            final answer = await askLeaveReason(context);
+                            if (answer == null) return;
+                            await _runAction(
+                              () => repo.suspendDriver(widget.driverId, reason: answer.$1, note: answer.$2),
+                              successMessage: 'Driver suspended',
+                            );
+                          },
+                    child: const Text('Suspend'),
+                  ),
                 if (isSuperAdmin)
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
@@ -215,8 +231,11 @@ class _DriverDetailViewState extends ConsumerState<DriverDetailView> {
             _InfoRow('Vehicle', vehicle == null ? '—' : orDash(vehicle.description)),
             _InfoRow('Registration', orDash(vehicle?.registration)),
             _InfoRow('PHV vehicle licence', orDash(vehicle?.phvLicenceNumber)),
-            if (vehicle != null && !vehicle.ownedByDriver) const _InfoRow('Keeper', 'Not the driver — permission letter required'),
+            if (vehicle != null && !vehicle.ownedByDriver)
+              _InfoRow('Registered keeper', [vehicle.keeperName, vehicle.keeperAddress].whereType<String>().join(', ').ifEmpty('Not recorded — required')),
             if (driver.signedUpAt != null) _InfoRow('Signed up', formatDate(driver.signedUpAt!)),
+            const Divider(height: 32),
+            DriverRecordsSection(driverId: widget.driverId, detail: detail),
             const Divider(height: 32),
             Text('Documents', style: Theme.of(context).textTheme.titleMedium),
             if (detail.documents.isEmpty) const Text('No documents uploaded'),

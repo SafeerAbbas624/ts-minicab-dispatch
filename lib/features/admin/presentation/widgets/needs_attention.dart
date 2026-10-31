@@ -12,7 +12,7 @@ import '../../application/admin_providers.dart';
 class NeedsAttention extends ConsumerWidget {
   const NeedsAttention({super.key, required this.onGo});
 
-  final void Function({required int tab, int? jobsSub, int? driversSub}) onGo;
+  final void Function({required int tab, int? jobsSub, int? driversSub, int? recordsSub}) onGo;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,6 +22,7 @@ class NeedsAttention extends ConsumerWidget {
     final open = ref.watch(adminJobsProvider('open')).valueOrNull;
     final drivers = ref.watch(adminDriversProvider(null)).valueOrNull;
     final cancellations = ref.watch(adminCancellationRequestsProvider).valueOrNull;
+    final records = ref.watch(adminComplianceSummaryProvider).valueOrNull;
 
     final soon = DateTime.now().add(const Duration(hours: 1));
     final unassignedSoon = open?.where((j) => j.pickupDatetime.isBefore(soon)).length;
@@ -37,6 +38,10 @@ class NeedsAttention extends ConsumerWidget {
       _Row('Drivers with an expired document', expired, StatusTone.stopped, () => onGo(tab: 2, driversSub: 0)),
       _Row('Drivers with a document expiring in 30 days', expiring, StatusTone.waiting, () => onGo(tab: 2, driversSub: 0)),
       _Row('Driver applications to review', pendingDrivers, StatusTone.open, () => onGo(tab: 2, driversSub: 1)),
+      _Row('Drivers to report to TfL (PHV/105, 14 days)', records?.phv105Due.length, StatusTone.stopped, () => onGo(tab: 2, driversSub: 0)),
+      _Row('Open complaints', records?.openComplaints, StatusTone.waiting, () => onGo(tab: 5, recordsSub: 0)),
+      _Row('Open lost property', records?.openLostProperty, StatusTone.open, () => onGo(tab: 5, recordsSub: 1)),
+      _Row('Staff register entries incomplete (DBS)', records?.staffRegisterIncomplete.length, StatusTone.waiting, () => onGo(tab: 5, recordsSub: 2)),
     ];
     final loaded = rows.every((r) => r.count != null);
     final active = rows.where((r) => (r.count ?? 0) > 0).toList();

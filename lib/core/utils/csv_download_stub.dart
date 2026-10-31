@@ -1,2 +1,2 @@
 /// Only used on web; see csv_download_web.dart.
-void downloadCsv(List<int> bytes, String fileName) => throw UnsupportedError('web only');
+void downloadFile(List<int> bytes, String fileName, String mimeType) => throw UnsupportedError('web only');

@@ -14,6 +14,7 @@ import 'dashboard_screen.dart';
 import 'drivers_shell_screen.dart';
 import 'jobs_shell_screen.dart';
 import 'payments_shell_screen.dart';
+import 'records/records_shell_screen.dart';
 import 'tfl_export_screen.dart';
 
 class AdminShell extends ConsumerWidget {
@@ -25,6 +26,7 @@ class AdminShell extends ConsumerWidget {
     'Drivers',
     'Payments',
     'TfL Export',
+    'TfL Records',
     'Action Logs',
     'Booking Audit Log',
     'Settings',
@@ -36,6 +38,7 @@ class AdminShell extends ConsumerWidget {
     DriversShellScreen(),
     PaymentsShellScreen(),
     TflExportScreen(),
+    RecordsShellScreen(),
     ActionLogScreen(),
     AuditLogScreen(),
     AdminSettingsScreen(),
@@ -47,6 +50,7 @@ class AdminShell extends ConsumerWidget {
     Icons.people_outline,
     Icons.payments_outlined,
     Icons.directions_car_outlined,
+    Icons.folder_shared_outlined,
     Icons.receipt_long_outlined,
     Icons.timer_outlined,
     Icons.settings_outlined,

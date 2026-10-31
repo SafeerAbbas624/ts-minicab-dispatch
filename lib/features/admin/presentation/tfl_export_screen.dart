@@ -90,6 +90,22 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
     }
   }
 
+  /// TfL portal "Operator Upload": drivers and vehicles used or available
+  /// in the week, every Monday.
+  Future<void> _downloadUpload(String kind) async {
+    setState(() => _isExporting = true);
+    try {
+      final bytes = await ref.read(adminRepositoryProvider).fetchTflUploadCsv(kind, weekStart: _weekStart);
+      final weekLabel = dateOnly(_weekStart);
+      if (!mounted) return;
+      await shareCsv(bytes, 'tfl-upload-$kind-$weekLabel.csv', subject: 'TfL upload ($kind) $weekLabel');
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final weekLabel =
@@ -106,6 +122,43 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
               title: Text('Week starting $weekLabel'),
               trailing: const Icon(Icons.calendar_today),
               onTap: _pickWeek,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Every Monday: TfL portal upload for last week', style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 4),
+                      const Text('Upload each file on the TfL portal (Operator Upload → Driver, then Vehicle).'),
+                      const SizedBox(height: 8),
+                      Wrap(spacing: 8, runSpacing: 8, children: [
+                        OutlinedButton.icon(
+                          onPressed: _isExporting ? null : () => _downloadUpload('drivers'),
+                          icon: const Icon(Icons.badge_outlined),
+                          label: const Text('Drivers CSV'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _isExporting ? null : () => _downloadUpload('vehicles'),
+                          icon: const Icon(Icons.directions_car_outlined),
+                          label: const Text('Vehicles CSV'),
+                        ),
+                      ]),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text("Booking records (the inspector's weekly bookings sheet)"),
+              ),
             ),
             Expanded(child: _buildBody()),
           ],
@@ -127,7 +180,7 @@ class _TflExportScreenState extends ConsumerState<TflExportScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.download),
-            label: const Text('Download CSV'),
+            label: const Text('Bookings CSV'),
           ),
         ),
       ],

@@ -22,6 +22,7 @@ class Job {
     this.acceptedByDriverId,
     this.payment,
     this.vehicleClass,
+    this.fareType,
     this.cancellationRequests = const [],
     this.bookingRef = '',
     this.bookedAt,
@@ -54,6 +55,7 @@ class Job {
       acceptedByDriverId: json['currentDriverId']?.toString(),
       payment: json['payment'] != null ? Payment.fromJson(json['payment'] as Map<String, dynamic>) : null,
       vehicleClass: json['vehicleClassRequested'] as String?,
+      fareType: json['fareType'] as String?,
       cancellationRequests: ((json['cancellationRequests'] as List?) ?? [])
           .cast<Map<String, dynamic>>()
           .map(CancellationRequest.fromJson)
@@ -76,6 +78,10 @@ class Job {
   final String? source;
   final String? notes;
   final String? vehicleClass;
+
+  /// 'fixed' (agreed) or 'estimate' — TfL needs one or the other before
+  /// every journey.
+  final String? fareType;
   final String? acceptedByDriverId;
   final Payment? payment;
   final List<CancellationRequest> cancellationRequests;
