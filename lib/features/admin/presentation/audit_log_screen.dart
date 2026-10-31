@@ -128,6 +128,8 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(e.timestampDisplay, style: mono),
+                if (e.deviceTimeDisplay != null)
+                  Text("Tapped on driver's phone (offline): ${e.deviceTimeDisplay}", style: mono),
                 Text(e.actor),
                 if (e.note != null && e.note!.isNotEmpty) Text(e.note!, maxLines: 3, overflow: TextOverflow.ellipsis),
               ],

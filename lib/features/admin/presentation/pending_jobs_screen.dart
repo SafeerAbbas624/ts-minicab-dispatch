@@ -54,7 +54,7 @@ class PendingJobsScreen extends ConsumerWidget {
             DataCell(Text('${job.pickupLocation} → ${job.dropoffLocation}')),
             DataCell(Text(job.customerName)),
             DataCell(Text(formatCurrency(job.fare))),
-            DataCell(_PendingJobActions(job: job)),
+            DataCell(_PendingJobActions(job: job, inTable: true)),
           ],
         );
       },
@@ -99,9 +99,13 @@ class _JobRow extends StatelessWidget {
 /// card's footer and the desktop table's Actions column so both reach the
 /// same handlers instead of duplicating the async logic.
 class _PendingJobActions extends ConsumerStatefulWidget {
-  const _PendingJobActions({required this.job});
+  const _PendingJobActions({required this.job, this.inTable = false});
 
   final Job job;
+
+  /// In the desktop table the cell has a fixed height, so the buttons stay
+  /// on one line instead of wrapping on top of each other.
+  final bool inTable;
 
   @override
   ConsumerState<_PendingJobActions> createState() => _PendingJobActionsState();
@@ -173,19 +177,20 @@ class _PendingJobActionsState extends ConsumerState<_PendingJobActions> {
   Widget build(BuildContext context) {
     // Wrap, not Row — "Assign to driver" + "Cancel" overflowed a narrow
     // phone width as a fixed Row (caught by a widget test at 400px).
-    return Wrap(
-      spacing: 8,
-      children: [
-        TextButton(
-          onPressed: _isSubmitting ? null : _assign,
-          child: const Text('Assign to driver'),
-        ),
-        TextButton(
-          onPressed: _isSubmitting ? null : _cancel,
-          style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-          child: const Text('Cancel'),
-        ),
-      ],
-    );
+    final buttons = [
+      TextButton(
+        onPressed: _isSubmitting ? null : _assign,
+        child: const Text('Assign to driver'),
+      ),
+      TextButton(
+        onPressed: _isSubmitting ? null : _cancel,
+        style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+        child: const Text('Cancel'),
+      ),
+    ];
+    if (widget.inTable) {
+      return Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: buttons);
+    }
+    return Wrap(spacing: 8, children: buttons);
   }
 }

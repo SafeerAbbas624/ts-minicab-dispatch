@@ -109,7 +109,8 @@ class _QueueItemActionsState extends ConsumerState<_QueueItemActions> {
     setState(() => _isSubmitting = true);
     try {
       await ref.read(adminRepositoryProvider).approveJob(widget.job.id);
-      ref.invalidate(adminJobsProvider('pending_approval'));
+      // Refresh every job list: the approved job moves into Active.
+      ref.invalidate(adminJobsProvider);
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));

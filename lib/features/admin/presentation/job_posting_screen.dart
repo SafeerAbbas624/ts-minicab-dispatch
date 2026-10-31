@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/vehicle_classes.dart';
 import '../../../core/network/api_exception.dart';
+import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
 
 class JobPostingScreen extends ConsumerStatefulWidget {
@@ -96,6 +97,8 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
             vehicleClass: _vehicleClass,
             notes: _notesController.text.trim(),
           );
+      // Every job list (Active, Accepted, ...) is a member of this family.
+      ref.invalidate(adminJobsProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Job posted')));

@@ -119,6 +119,7 @@ class AuditLogEntry {
     required this.eventLabel,
     required this.actor,
     this.note,
+    this.deviceTimeDisplay,
   });
 
   factory AuditLogEntry.fromJson(Map<String, dynamic> json) => AuditLogEntry(
@@ -131,11 +132,16 @@ class AuditLogEntry {
         eventLabel: json['event_label'] as String? ?? '',
         actor: json['actor'] as String? ?? '',
         note: json['note'] as String?,
+        deviceTimeDisplay: json['device_time_display'] as String?,
       );
 
   final String id;
   final DateTime timestamp;
   final String timestampDisplay;
+
+  /// When the driver tapped the step on their phone, if that was while
+  /// offline and the step reached the server later; null otherwise.
+  final String? deviceTimeDisplay;
   final String bookingRef;
   final String jobId;
   final String eventType;
