@@ -86,7 +86,7 @@ class _JobRow extends StatelessWidget {
               Row(
                 children: [
                   Expanded(child: Text(formatDateTime(job.pickupDatetime))),
-                  Chip(label: Text(job.status), visualDensity: VisualDensity.compact),
+                  Chip(label: Text(job.status.replaceAll('_', ' ')), visualDensity: VisualDensity.compact),
                 ],
               ),
               if (job.hasPendingCancellation)
@@ -102,10 +102,7 @@ class _JobRow extends StatelessWidget {
               Text('${job.pickupLocation} → ${job.dropoffLocation}'),
               Text('${job.customerName} · ${formatCurrency(job.fare)}'),
               Text(
-                // No accepted-driver name in the job payload, only an id —
-                // full name/phone shows in the detail popup instead, which
-                // fetches it on demand.
-                'Accepted by driver ${job.acceptedByDriverId}',
+                'Accepted by ${job.acceptedByDriverLabel ?? 'driver'}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 8),

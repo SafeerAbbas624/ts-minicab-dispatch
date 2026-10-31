@@ -20,6 +20,7 @@ class Job {
     this.source,
     this.notes,
     this.acceptedByDriverId,
+    this.acceptedByDriverLabel,
     this.payment,
     this.vehicleClass,
     this.fareType,
@@ -53,6 +54,7 @@ class Job {
       source: json['source'] as String?,
       notes: json['notes'] as String?,
       acceptedByDriverId: json['currentDriverId']?.toString(),
+      acceptedByDriverLabel: _driverLabel(json['currentDriver']),
       payment: json['payment'] != null ? Payment.fromJson(json['payment'] as Map<String, dynamic>) : null,
       vehicleClass: json['vehicleClassRequested'] as String?,
       fareType: json['fareType'] as String?,
@@ -83,6 +85,9 @@ class Job {
   /// every journey.
   final String? fareType;
   final String? acceptedByDriverId;
+
+  /// "TS001 · James Turner" when the admin job list includes the driver.
+  final String? acceptedByDriverLabel;
   final Payment? payment;
   final List<CancellationRequest> cancellationRequests;
 
@@ -232,4 +237,11 @@ class PaymentsBucket {
   final List<Payment> unpaid;
 
   List<Payment> get all => [...paid, ...unpaid];
+}
+
+String? _driverLabel(Object? driver) {
+  if (driver is! Map<String, dynamic>) return null;
+  final name = [driver['forename'], driver['surname']].whereType<String>().join(' ');
+  final sign = driver['callSign'] as String?;
+  return [?sign, if (name.isNotEmpty) name].join(' · ');
 }
