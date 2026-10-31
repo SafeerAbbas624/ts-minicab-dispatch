@@ -9,6 +9,7 @@ import 'earnings_screen.dart';
 import 'job_history_screen.dart';
 import 'jobs_tab_screen.dart';
 import 'driver_settings_screen.dart';
+import '../application/offline_status_queue.dart';
 
 /// The bottom nav is always shown, regardless of approval status — a
 /// not-yet-approved driver still needs to reach Settings > Documents to
@@ -39,6 +40,13 @@ class DriverShell extends ConsumerWidget {
     // job is completed or handed back, off otherwise.
     ref.listen(activeJobsProvider, (_, next) {
       next.whenData((jobs) async {
+        // Steps saved offline from a previous session go first.
+        final queue = ref.read(offlineStatusQueueProvider);
+        if (!queue.isEmpty && await queue.flush()) {
+          ref.invalidate(myJobsProvider);
+          ref.invalidate(activeJobsProvider);
+          return;
+        }
         final live = liveTrackingJob(jobs);
         final sharing = ref.read(locationSharingProvider);
         await sharing.syncWith(live);
@@ -54,9 +62,12 @@ class DriverShell extends ConsumerWidget {
     // Back online: pull fresh state rather than trusting what was on screen.
     ref.listen(isOnlineProvider, (prev, next) {
       if (prev?.valueOrNull == false && next.valueOrNull == true) {
-        ref.invalidate(openJobsProvider);
-        ref.invalidate(myJobsProvider);
-        ref.invalidate(activeJobsProvider);
+        // Send any steps tapped while offline first, then refresh.
+        ref.read(offlineStatusQueueProvider).flush().whenComplete(() {
+          ref.invalidate(openJobsProvider);
+          ref.invalidate(myJobsProvider);
+          ref.invalidate(activeJobsProvider);
+        });
       }
     });
 
@@ -64,7 +75,7 @@ class DriverShell extends ConsumerWidget {
       appBar: AppBar(title: Text(_titles[index])),
       body: Column(
         children: [
-          const OfflineBanner(),
+          const OfflineBanner(driverMode: true),
           Expanded(child: _nav(index, ref)),
         ],
       ),

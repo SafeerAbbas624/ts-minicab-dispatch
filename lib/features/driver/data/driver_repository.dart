@@ -102,8 +102,13 @@ class DriverRepository {
   Future<void> requestCancellation(String jobId, {required String reason}) =>
       _client.post('/jobs/$jobId/request-cancellation', data: {'reason': reason});
 
-  Future<void> updateJobStatus(String jobId, {required String status}) =>
-      _client.post('/jobs/$jobId/status', data: {'status': status});
+  /// [clientTime] is when the driver tapped the step, for a step queued
+  /// while offline and sent later.
+  Future<void> updateJobStatus(String jobId, {required String status, DateTime? clientTime}) =>
+      _client.post('/jobs/$jobId/status', data: {
+        'status': status,
+        if (clientTime != null) 'client_time': clientTime.toUtc().toIso8601String(),
+      });
 
   Future<List<Job>> fetchMyJobs() async {
     final res = await _client.get('/jobs/mine');

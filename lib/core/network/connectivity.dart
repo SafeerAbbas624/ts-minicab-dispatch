@@ -1,6 +1,9 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../utils/formatters.dart';
 
 /// True while the device has any network. Starts optimistic so the banner
 /// doesn't flash on launch.
@@ -17,7 +20,11 @@ bool isOnline(WidgetRef ref) => ref.watch(isOnlineProvider).valueOrNull ?? true;
 /// done without the server's confirmation, so actions simply wait here; the
 /// shell refreshes its data when the connection comes back.
 class OfflineBanner extends ConsumerWidget {
-  const OfflineBanner({super.key});
+  const OfflineBanner({super.key, this.driverMode = false});
+
+  /// Drivers: job steps are saved and sent later, and the operating centre
+  /// is one tap away (it can be reached by phone without data).
+  final bool driverMode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,10 +42,19 @@ class OfflineBanner extends ConsumerWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  "You're offline — job actions are paused until the connection returns.",
+                  driverMode
+                      ? "You're offline. Arrived / on board / complete taps are saved and sent when you're back online."
+                      : "You're offline — job actions are paused until the connection returns.",
                   style: TextStyle(color: colors.onErrorContainer, fontWeight: FontWeight.w600),
                 ),
               ),
+              if (driverMode)
+                TextButton.icon(
+                  style: TextButton.styleFrom(foregroundColor: colors.onErrorContainer),
+                  onPressed: () => launchUrl(Uri.parse(operatorPhoneHref)),
+                  icon: const Icon(Icons.call, size: 18),
+                  label: const Text('Call office'),
+                ),
             ],
           ),
         ),

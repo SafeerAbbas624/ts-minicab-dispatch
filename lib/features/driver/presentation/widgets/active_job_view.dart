@@ -11,6 +11,7 @@ import '../../../../core/widgets/route_block.dart';
 import '../../../../core/widgets/status_pill.dart';
 import '../../application/driver_providers.dart';
 import '../../application/location_sharing.dart';
+import '../../application/offline_status_queue.dart';
 import 'call_operator_button.dart';
 import '../../data/driver_repository.dart';
 
@@ -60,6 +61,17 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
         ));
       }
       if (!mounted) return;
+    }
+    // No signal: save the step with the time it was tapped; it's sent as
+    // soon as the phone is back online (driver_shell.dart).
+    if (!isOnline(ref) && status != 'en_route') {
+      await ref.read(offlineStatusQueueProvider).enqueue(widget.job.id, status);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Saved on your phone — it will be sent with this time when you're back online."),
+        ));
+      }
+      return;
     }
     setState(() => _isSubmitting = true);
     try {
@@ -193,12 +205,16 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
   @override
   Widget build(BuildContext context) {
     final job = widget.job;
+    final queued = ref.watch(offlineStatusQueueProvider).latestFor(job.id);
+    // The step reached on this phone, which may be ahead of the server
+    // while offline.
+    final status = queued ?? job.status;
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final pendingCancellation = job.hasPendingCancellation;
     (String, String, IconData, String, String?)? matchedStep;
     for (final s in _steps) {
-      if (s.$1 == job.status) {
+      if (s.$1 == status) {
         matchedStep = s;
         break;
       }
@@ -209,7 +225,11 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
         ref.watch(locationSharingProvider).sharingJobId == job.id;
     final pickup = toLondon(job.pickupDatetime);
     final time = '${pickup.hour.toString().padLeft(2, '0')}:${pickup.minute.toString().padLeft(2, '0')}';
-    final busy = _isSubmitting || pendingCancellation || !online;
+    // Offline: steps can still be tapped (they're queued) except starting
+    // the job, which the server must confirm first; cancelling needs a
+    // connection too.
+    final busy = _isSubmitting || pendingCancellation || (!online && status == 'accepted');
+    final cancelBusy = _isSubmitting || pendingCancellation || !online;
 
     return Column(
       children: [
@@ -246,7 +266,7 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
                     children: [
                       Row(
                         children: [
-                          StatusPill.job(job.status),
+                          StatusPill.job(status),
                           const Spacer(),
                           Text(
                             job.bookingRef,
@@ -258,7 +278,14 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
                       Text(time, style: t.displaySmall?.copyWith(fontFeatures: tabularFigures)),
                       Text(formatDate(job.pickupDatetime), style: t.bodySmall),
                       const SizedBox(height: 20),
-                      _StepTrack(status: job.status),
+                      _StepTrack(status: status),
+                      if (queued != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          'Saved offline — waiting to send',
+                          style: t.labelMedium?.copyWith(color: c.tertiary, fontWeight: FontWeight.w700),
+                        ),
+                      ],
                       const SizedBox(height: 20),
                       RouteBlock(pickup: job.pickupLocation, dropoff: job.dropoffLocation, maxLines: null),
                     ],
@@ -354,7 +381,7 @@ class _ActiveJobViewState extends ConsumerState<ActiveJobView> {
                     width: double.infinity,
                     child: TextButton(
                       style: TextButton.styleFrom(foregroundColor: c.error),
-                      onPressed: busy ? null : _cantComplete,
+                      onPressed: cancelBusy ? null : _cantComplete,
                       child: const Text("Can't complete this job"),
                     ),
                   ),

@@ -29,4 +29,11 @@ class SecureStorage {
   Future<void> saveThemeMode(String mode) => _storage.write(key: _themeModeKey, value: mode);
 
   Future<String?> readThemeMode() => _storage.read(key: _themeModeKey);
+
+  // Job steps tapped while offline, waiting to be sent (JSON list).
+  static const _pendingStatusKey = 'pending_job_statuses';
+
+  Future<void> savePendingStatuses(String json) => _storage.write(key: _pendingStatusKey, value: json);
+
+  Future<String?> readPendingStatuses() => _storage.read(key: _pendingStatusKey);
 }
