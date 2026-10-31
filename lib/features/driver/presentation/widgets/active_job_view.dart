@@ -408,10 +408,11 @@ class _StepTrack extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final current = _order.indexOf(status);
+    // A completed trip shows every step done.
+    final current = status == 'completed' ? _order.length : _order.indexOf(status);
 
     return Semantics(
-      label: 'Progress: ${current >= 0 ? _labels[current] : status}',
+      label: 'Progress: ${current >= 0 && current < _labels.length ? _labels[current] : status}',
       excludeSemantics: true,
       child: Row(
         children: [
