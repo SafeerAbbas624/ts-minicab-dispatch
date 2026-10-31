@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,6 +82,12 @@ class DriverRepository {
     final res = await _client.get('/drivers/me/documents');
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(DriverDocument.fromJson).toList();
+  }
+
+  /// The file of one of the driver's own documents (e.g. their photo).
+  Future<Uint8List> fetchDocumentFile(String documentId) async {
+    final res = await _client.getBytes('/drivers/me/documents/$documentId/file');
+    return Uint8List.fromList(res.data ?? const []);
   }
 
   Future<List<Job>> fetchOpenJobs() async {

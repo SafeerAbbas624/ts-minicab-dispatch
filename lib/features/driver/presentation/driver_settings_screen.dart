@@ -17,44 +17,6 @@ import 'profile_screen.dart';
 class DriverSettingsScreen extends ConsumerWidget {
   const DriverSettingsScreen({super.key});
 
-  /// PATCH /drivers/me only accepts avatar_url as a plain string field —
-  /// confirmed via the backend's own API reference, there is no file-upload
-  /// endpoint for avatars at all. So this sets a URL rather than picking a
-  /// local image file, which is a real capability limit, not a UI choice.
-  Future<void> _setAvatarUrl(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController();
-    final url = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Set Avatar URL'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Image URL'),
-          keyboardType: TextInputType.url,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    if (url == null || url.isEmpty) return;
-    try {
-      await ref.read(driverRepositoryProvider).updateMe(avatarUrl: url);
-      ref.invalidate(driverMeProvider);
-    } on ApiException catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    }
-  }
-
   Future<void> _changePassword(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController();
     final newPassword = await showDialog<String>(
@@ -111,7 +73,6 @@ class DriverSettingsScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) => Text(error.toString()),
           data: (driver) {
-            final c = Theme.of(context).colorScheme;
             final t = Theme.of(context).textTheme;
             return Card(
               margin: EdgeInsets.zero,
@@ -119,18 +80,7 @@ class DriverSettingsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: c.secondaryContainer,
-                      foregroundColor: c.onSecondaryContainer,
-                      backgroundImage: driver.avatarUrl != null ? NetworkImage(driver.avatarUrl!) : null,
-                      child: driver.avatarUrl == null
-                          ? Text(
-                              driver.fullName.isEmpty ? '?' : driver.fullName[0].toUpperCase(),
-                              style: t.titleLarge?.copyWith(color: c.onSecondaryContainer),
-                            )
-                          : null,
-                    ),
+                    _DriverAvatar(initial: driver.fullName.isEmpty ? '?' : driver.fullName[0].toUpperCase(), avatarUrl: driver.avatarUrl),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -146,9 +96,13 @@ class DriverSettingsScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    // The avatar is the "Driver photo" document, so changing it
+                    // means uploading a new one there (checked by the operator).
                     IconButton(
-                      tooltip: 'Set profile photo',
-                      onPressed: () => _setAvatarUrl(context, ref),
+                      tooltip: 'Change photo',
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const DocumentsScreen()),
+                      ),
                       icon: const Icon(Icons.add_a_photo_outlined),
                     ),
                   ],
@@ -256,6 +210,35 @@ class DriverSettingsScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The driver's photo from their documents, falling back to an older
+/// avatar URL and then to their initial.
+class _DriverAvatar extends ConsumerWidget {
+  const _DriverAvatar({required this.initial, this.avatarUrl});
+
+  final String initial;
+  final String? avatarUrl;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = Theme.of(context).colorScheme;
+    final photo = ref.watch(driverPhotoProvider).valueOrNull;
+    final ImageProvider? image = photo != null && photo.isNotEmpty
+        ? MemoryImage(photo)
+        : avatarUrl != null
+            ? NetworkImage(avatarUrl!)
+            : null;
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: c.secondaryContainer,
+      foregroundColor: c.onSecondaryContainer,
+      backgroundImage: image,
+      child: image == null
+          ? Text(initial, style: Theme.of(context).textTheme.titleLarge?.copyWith(color: c.onSecondaryContainer))
+          : null,
     );
   }
 }

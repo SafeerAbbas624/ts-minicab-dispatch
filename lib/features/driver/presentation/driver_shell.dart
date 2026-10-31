@@ -10,6 +10,7 @@ import 'job_history_screen.dart';
 import 'jobs_tab_screen.dart';
 import 'driver_settings_screen.dart';
 import '../application/offline_status_queue.dart';
+import 'widgets/jobs_auto_refresh.dart';
 
 /// The bottom nav is always shown, regardless of approval status — a
 /// not-yet-approved driver still needs to reach Settings > Documents to
@@ -76,7 +77,7 @@ class DriverShell extends ConsumerWidget {
       body: Column(
         children: [
           const OfflineBanner(driverMode: true),
-          Expanded(child: _nav(index, ref)),
+          Expanded(child: JobsAutoRefresh(child: _nav(index, ref))),
         ],
       ),
     );

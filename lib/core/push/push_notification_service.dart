@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/admin/application/admin_providers.dart';
 import '../../features/auth/application/auth_controller.dart';
+import '../../features/driver/application/driver_providers.dart';
 import 'push_token_repository.dart';
 
 const _androidChannel = AndroidNotificationChannel(
@@ -84,8 +85,14 @@ class PushNotificationService {
     // only ever be wired once per app process.
     if (!_listenersWired) {
       _listenersWired = true;
-      FirebaseMessaging.onMessage.listen(_showForegroundNotification);
-      FirebaseMessaging.onMessageOpenedApp.listen(_routeFromMessage);
+      FirebaseMessaging.onMessage.listen((message) {
+        _refreshDriverJobs();
+        _showForegroundNotification(message);
+      });
+      FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        _refreshDriverJobs();
+        _routeFromMessage(message);
+      });
       final initialMessage = await messaging.getInitialMessage();
       if (initialMessage != null) _routeFromMessage(initialMessage);
     }
@@ -106,6 +113,17 @@ class PushNotificationService {
         if (type != null) _routeFromType(type);
       },
     );
+  }
+
+  /// Every driver push is about a job (new, cancelled, reassigned,
+  /// cancellation approved...), so reload the driver's job lists straight
+  /// away — a job the passenger cancelled leaves the Jobs tab without the
+  /// driver having to reopen the app.
+  void _refreshDriverJobs() {
+    final role = _ref.read(authControllerProvider).role;
+    if (role == null || !role.isDriverFamily) return;
+    _ref.invalidate(openJobsProvider);
+    _ref.invalidate(myJobsProvider);
   }
 
   void _showForegroundNotification(RemoteMessage message) {

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/driver.dart';
@@ -18,6 +20,26 @@ final myPaymentsProvider = FutureProvider.autoDispose<PaymentsBucket>((ref) {
 
 final driverDocumentsProvider = FutureProvider.autoDispose<List<DriverDocument>>((ref) {
   return ref.watch(driverRepositoryProvider).fetchDocuments();
+});
+
+/// The driver's uploaded "Driver photo" document — the same photo
+/// passengers see — used as their avatar. A verified photo wins over a
+/// newer one still waiting for review; rejected photos are never shown.
+/// Null when there's no photo or it can't be loaded.
+final driverPhotoProvider = FutureProvider.autoDispose<Uint8List?>((ref) async {
+  final docs = await ref.watch(driverDocumentsProvider.future);
+  final photos = docs.where((d) => d.type == 'driver_photo' && d.reviewStatus != 'rejected').toList()
+    ..sort((a, b) {
+      final verified = (b.isVerified ? 1 : 0) - (a.isVerified ? 1 : 0);
+      if (verified != 0) return verified;
+      return (b.uploadedAt ?? DateTime(0)).compareTo(a.uploadedAt ?? DateTime(0));
+    });
+  if (photos.isEmpty) return null;
+  try {
+    return await ref.watch(driverRepositoryProvider).fetchDocumentFile(photos.first.id);
+  } catch (_) {
+    return null;
+  }
 });
 
 final driverMeProvider = FutureProvider.autoDispose<Driver>((ref) {
