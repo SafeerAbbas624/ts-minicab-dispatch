@@ -57,7 +57,7 @@ class AcceptedJobsScreen extends ConsumerWidget {
           ],
           cellsFor: (job) => [
             DataCell(Text(formatDateTime(job.pickupDatetime))),
-            DataCell(Text('${job.pickupLocation} → ${job.dropoffLocation}')),
+            DataCell(Text(job.routeLabel)),
             DataCell(Text('${job.customerName} · ${formatCurrency(job.fare)}')),
             DataCell(Chip(label: Text(job.status), visualDensity: VisualDensity.compact)),
             DataCell(_AcceptedJobActions(job: job)),
@@ -99,7 +99,7 @@ class _JobRow extends StatelessWidget {
                     labelStyle: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
                   ),
                 ),
-              Text('${job.pickupLocation} → ${job.dropoffLocation}'),
+              Text(job.routeLabel),
               Text('${job.customerName} · ${formatCurrency(job.fare)}'),
               Text(
                 'Accepted by ${job.acceptedByDriverLabel ?? 'driver'}',

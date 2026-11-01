@@ -58,7 +58,7 @@ class JobCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              RouteBlock(pickup: job.pickupLocation, dropoff: job.dropoffLocation, dense: true),
+              RouteBlock(pickup: job.pickupLocation, vias: job.viaStops, dropoff: job.dropoffLocation, dense: true),
               const SizedBox(height: 14),
               Divider(color: c.outlineVariant.withValues(alpha: 0.6)),
               const SizedBox(height: 10),

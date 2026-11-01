@@ -5,6 +5,7 @@ import '../../../core/constants/vehicle_classes.dart';
 import '../../../core/network/api_exception.dart';
 import '../application/admin_providers.dart';
 import '../data/admin_repository.dart';
+import 'widgets/via_stops_fields.dart';
 
 class JobPostingScreen extends ConsumerStatefulWidget {
   const JobPostingScreen({super.key});
@@ -17,6 +18,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pickupLocationController = TextEditingController();
   final _dropoffLocationController = TextEditingController();
+  final _viaStops = ViaStopsController();
   final _customerNameController = TextEditingController();
   final _customerContactController = TextEditingController();
   final _customerEmailController = TextEditingController();
@@ -31,6 +33,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
   void dispose() {
     _pickupLocationController.dispose();
     _dropoffLocationController.dispose();
+    _viaStops.dispose();
     _customerNameController.dispose();
     _customerContactController.dispose();
     _customerEmailController.dispose();
@@ -65,6 +68,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
     _formKey.currentState!.reset();
     _pickupLocationController.clear();
     _dropoffLocationController.clear();
+    setState(_viaStops.clear);
     _customerNameController.clear();
     _customerContactController.clear();
     _customerEmailController.clear();
@@ -89,6 +93,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
             pickupDatetime: _pickupDatetime!,
             pickupLocation: _pickupLocationController.text.trim(),
             dropoffLocation: _dropoffLocationController.text.trim(),
+            viaStops: _viaStops.values,
             customerName: _customerNameController.text.trim(),
             customerContact: _customerContactController.text.trim(),
             customerEmail: _customerEmailController.text.trim(),
@@ -137,6 +142,7 @@ class _JobPostingScreenState extends ConsumerState<JobPostingScreen> {
                   validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
                 ),
                 const SizedBox(height: 16),
+                ViaStopsFields(controller: _viaStops),
                 TextFormField(
                   controller: _dropoffLocationController,
                   decoration: const InputDecoration(labelText: 'Dropoff location'),

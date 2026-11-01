@@ -88,7 +88,7 @@ class ActiveJobSummaryCard extends StatelessWidget {
                   style: t.bodyMedium?.copyWith(color: fg),
                 ),
                 Text(
-                  'to ${job.dropoffLocation}',
+                  job.viaStops.isEmpty ? 'to ${job.dropoffLocation}' : 'to ${job.dropoffLocation} · ${job.viaStops.length} stop${job.viaStops.length == 1 ? '' : 's'}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: t.bodySmall?.copyWith(color: fgMuted),

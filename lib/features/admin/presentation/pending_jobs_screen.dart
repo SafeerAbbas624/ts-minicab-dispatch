@@ -51,7 +51,7 @@ class PendingJobsScreen extends ConsumerWidget {
           ],
           cellsFor: (job) => [
             DataCell(Text(formatDateTime(job.pickupDatetime))),
-            DataCell(Text('${job.pickupLocation} → ${job.dropoffLocation}')),
+            DataCell(Text(job.routeLabel)),
             DataCell(Text(job.customerName)),
             DataCell(Text(formatCurrency(job.fare))),
             DataCell(_PendingJobActions(job: job, inTable: true)),
@@ -83,7 +83,7 @@ class _JobRow extends StatelessWidget {
                   Chip(label: Text(job.status), visualDensity: VisualDensity.compact),
                 ],
               ),
-              Text('${job.pickupLocation} → ${job.dropoffLocation}'),
+              Text(job.routeLabel),
               Text('${job.customerName} · ${formatCurrency(job.fare)}'),
               const SizedBox(height: 8),
               _PendingJobActions(job: job),

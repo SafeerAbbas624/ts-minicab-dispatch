@@ -102,7 +102,7 @@ class _PaymentTable extends StatelessWidget {
       cellsFor: (p) => [
         DataCell(Text(p.job != null ? formatDateTime(p.job!.pickupDatetime) : 'Job ${p.jobId}')),
         DataCell(Text(
-          p.job != null ? '${p.job!.customerName} · ${p.job!.pickupLocation} → ${p.job!.dropoffLocation}' : '—',
+          p.job != null ? '${p.job!.customerName} · ${p.job!.routeLabel}' : '—',
         )),
         DataCell(Text(p.driver?.fullName ?? '—')),
         DataCell(isUnpaid
@@ -128,7 +128,7 @@ class _PaymentRow extends StatelessWidget {
         onTap: job != null ? () => showJobDetailDialog(context, job) : null,
         title: Text(job != null ? formatDateTime(job.pickupDatetime) : 'Job ${payment.jobId}'),
         subtitle: Text([
-          if (job != null) '${job.customerName} · ${job.pickupLocation} → ${job.dropoffLocation}',
+          if (job != null) '${job.customerName} · ${job.routeLabel}',
           if (driver != null) 'Driver: ${driver.fullName}',
           if (!isUnpaid && payment.paidAt != null) 'Paid ${formatDateTime(payment.paidAt!)}',
         ].join('\n')),

@@ -65,6 +65,8 @@ class JobDetailView extends StatelessWidget {
         if (job.bookedAt != null) _Row('Booked at', formatDateTime(job.bookedAt!)),
         _Row('Pickup', formatDateTime(job.pickupDatetime)),
         _Row('From', job.pickupLocation),
+        for (var i = 0; i < job.viaStops.length; i++)
+          _Row(job.viaStops.length > 1 ? 'Stop ${i + 1}' : 'Via', job.viaStops[i]),
         _Row('To', job.dropoffLocation),
         _Row('Customer', job.customerName),
         _Row('Contact', job.customerContact),

@@ -56,7 +56,7 @@ class CancellationRequestsScreen extends ConsumerWidget {
           cellsFor: (r) => [
             DataCell(Text(formatDateTime(r.createdAt))),
             DataCell(Text(r.driver?.fullName ?? '—')),
-            DataCell(Text(r.job != null ? '${r.job!.pickupLocation} → ${r.job!.dropoffLocation}' : '—')),
+            DataCell(Text(r.job != null ? r.job!.routeLabel : '—')),
             DataCell(ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 220),
               child: Text(r.reason, overflow: TextOverflow.ellipsis),
@@ -92,7 +92,7 @@ class _RequestContent extends StatelessWidget {
         const SizedBox(height: 4),
         if (driver != null) Text(driver.fullName, style: Theme.of(context).textTheme.titleSmall),
         if (job != null) ...[
-          Text('${job.pickupLocation} → ${job.dropoffLocation}'),
+          Text(job.routeLabel),
           Text('Pickup: ${formatDateTime(job.pickupDatetime)}'),
         ],
         const SizedBox(height: 8),

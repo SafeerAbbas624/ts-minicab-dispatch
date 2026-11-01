@@ -52,7 +52,7 @@ class WebsiteJobsQueueScreen extends ConsumerWidget {
           ],
           cellsFor: (job) => [
             DataCell(Text(formatDateTime(job.pickupDatetime))),
-            DataCell(Text('${job.pickupLocation} → ${job.dropoffLocation}')),
+            DataCell(Text(job.routeLabel)),
             DataCell(Text(job.customerName)),
             DataCell(Text(formatCurrency(job.fare))),
             DataCell(_QueueItemActions(job: job)),
@@ -79,7 +79,7 @@ class _QueueItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(formatDateTime(job.pickupDatetime)),
-              Text('${job.pickupLocation} → ${job.dropoffLocation}'),
+              Text(job.routeLabel),
               Text('${job.customerName} · ${formatCurrency(job.fare)}'),
               const SizedBox(height: 8),
               _QueueItemActions(job: job),

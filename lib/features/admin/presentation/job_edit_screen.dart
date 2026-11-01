@@ -5,6 +5,7 @@ import '../../../core/constants/vehicle_classes.dart';
 import '../../../core/models/job.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/admin_repository.dart';
+import 'widgets/via_stops_fields.dart';
 
 class JobEditScreen extends ConsumerStatefulWidget {
   const JobEditScreen({super.key, required this.job});
@@ -19,6 +20,7 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _pickupLocationController;
   late final TextEditingController _dropoffLocationController;
+  late final ViaStopsController _viaStops = ViaStopsController(widget.job.viaStops);
   late final TextEditingController _customerNameController;
   late final TextEditingController _customerContactController;
   late final TextEditingController _customerEmailController;
@@ -71,6 +73,7 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
   void dispose() {
     _pickupLocationController.dispose();
     _dropoffLocationController.dispose();
+    _viaStops.dispose();
     _customerNameController.dispose();
     _customerContactController.dispose();
     _customerEmailController.dispose();
@@ -90,6 +93,7 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
         'pickup_datetime': _pickupDatetime.toUtc().toIso8601String(),
         'pickup_address': _pickupLocationController.text.trim(),
         'dropoff_address': _dropoffLocationController.text.trim(),
+        'via_stops': _viaStops.values,
         'customer_name': _customerNameController.text.trim(),
         'customer_contact': _customerContactController.text.trim(),
         'customer_email': _customerEmailController.text.trim(),
@@ -134,6 +138,7 @@ class _JobEditScreenState extends ConsumerState<JobEditScreen> {
                   validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
                 ),
                 const SizedBox(height: 16),
+                ViaStopsFields(controller: _viaStops),
                 TextFormField(
                   controller: _dropoffLocationController,
                   decoration: const InputDecoration(labelText: 'Dropoff location'),

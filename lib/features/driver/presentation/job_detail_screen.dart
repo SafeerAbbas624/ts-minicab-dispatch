@@ -106,7 +106,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        RouteBlock(pickup: job.pickupLocation, dropoff: job.dropoffLocation, maxLines: null),
+                        RouteBlock(pickup: job.pickupLocation, vias: job.viaStops, dropoff: job.dropoffLocation, maxLines: null),
                       ],
                     ),
                   ),

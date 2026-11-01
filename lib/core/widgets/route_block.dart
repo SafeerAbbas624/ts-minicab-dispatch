@@ -8,12 +8,16 @@ class RouteBlock extends StatelessWidget {
     super.key,
     required this.pickup,
     required this.dropoff,
+    this.vias = const [],
     this.dense = false,
     this.maxLines = 2,
   });
 
   final String pickup;
   final String dropoff;
+
+  /// Stops on the way, in order.
+  final List<String> vias;
   final bool dense;
   final int? maxLines;
 
@@ -64,6 +68,18 @@ class RouteBlock extends StatelessWidget {
               ),
             ),
             SizedBox(height: gap),
+            for (var i = 0; i < vias.length; i++) ...[
+              stop(
+                vias.length > 1 ? 'Stop ${i + 1}' : 'Via',
+                vias[i],
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: c.outline),
+                ),
+              ),
+              SizedBox(height: gap),
+            ],
             stop(
               'Drop-off',
               dropoff,

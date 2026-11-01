@@ -38,7 +38,7 @@ class CompletedJobsScreen extends ConsumerWidget {
                   onTap: () => showJobDetailDialog(context, job),
                   title: Text(formatDateTime(job.pickupDatetime)),
                   subtitle:
-                      Text('${job.customerName} · ${job.pickupLocation} → ${job.dropoffLocation}'),
+                      Text('${job.customerName} · ${job.routeLabel}'),
                   trailing: _PaidChip(isPaid: isPaid),
                 ),
               );
@@ -59,7 +59,7 @@ class CompletedJobsScreen extends ConsumerWidget {
           ],
           cellsFor: (job) => [
             DataCell(Text(formatDateTime(job.pickupDatetime))),
-            DataCell(Text('${job.pickupLocation} → ${job.dropoffLocation}')),
+            DataCell(Text(job.routeLabel)),
             DataCell(Text(job.customerName)),
             DataCell(Text(formatCurrency(job.fare))),
             DataCell(_PaidChip(isPaid: job.payment?.isPaid ?? false)),

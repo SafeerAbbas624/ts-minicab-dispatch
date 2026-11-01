@@ -13,6 +13,7 @@ class Job {
     required this.pickupDatetime,
     required this.pickupLocation,
     required this.dropoffLocation,
+    this.viaStops = const [],
     required this.customerName,
     required this.customerContact,
     required this.fare,
@@ -47,6 +48,7 @@ class Job {
           DateTime.tryParse(json['pickupDatetime'] as String? ?? '') ?? DateTime.now(),
       pickupLocation: json['pickupAddress'] as String? ?? '',
       dropoffLocation: json['dropoffAddress'] as String? ?? '',
+      viaStops: ((json['viaStops'] as List?) ?? const []).map((s) => s.toString()).toList(),
       customerName: json['customerName'] as String? ?? '',
       customerContact: json['customerContact'] as String? ?? '',
       fare: _parseAmount(json['fareAmount']),
@@ -73,6 +75,12 @@ class Job {
   final DateTime pickupDatetime;
   final String pickupLocation;
   final String dropoffLocation;
+
+  /// Stops on the way (up to 5), in order, between pickup and drop-off.
+  final List<String> viaStops;
+
+  /// "Pickup → Stop → … → Drop-off" for one-line route summaries.
+  String get routeLabel => [pickupLocation, ...viaStops, dropoffLocation].join(' → ');
   final String customerName;
   final String customerContact;
   final double fare;
